@@ -1,0 +1,4 @@
+useDynLib(drmdel, .registration=TRUE)
+
+#exportPattern("^[^\\.]")
+export("drmdel", "summaryDRM", "mdeleCov", "densityDRM", "cdfDRM", "quantileDRM")

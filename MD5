@@ -1,0 +1,16 @@
+41502a703f30ff6dcbcbd3cefb3bad9b *DESCRIPTION
+d384c37e73ff508f251a6e7c0e8e25fd *NAMESPACE
+fc2e880599ae32649b20c8d4f60ef856 *R/drmdel.R
+121d381232fb99dda3a2477475b9fc14 *inst/examples/examples.R
+2fcc0465aabdbbce6e12fcd4720cdf44 *man/cdfDRM.Rd
+d3b57f8b240f311ee753aed7061b30bf *man/densityDRM.Rd
+2bd4acf2b3301c8a23c9a365c04c0004 *man/drmdel.Rd
+b8dd4b30f0327afac7b581a6151cb940 *man/mdeleCov.Rd
+52ce3db68153ddefb4e1709e48bcc59c *man/quantileDRM.Rd
+86ae64f7e443e6287c2b51f0f7443bef *man/summaryDRM.Rd
+96e3b7730fb49e75de7e7014832d85ac *src/Makevars
+f3e795f2f0c38b9f3fba05c9afdfe17f *src/Makevars.win
+1be3fdb1e0a4c8afbb80d21aa36de462 *src/drmdel.c
+880112073c5d9d6d65b2f776ead8b3e1 *src/hFuncs.c
+5a4d36e82e1d1ba8a1469328ef93c30a *src/hFuncs.h
+c8f49979df9c3c7c9a169b64864c16be *tests/drmdelTest.R
