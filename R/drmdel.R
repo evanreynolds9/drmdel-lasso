@@ -1,7 +1,7 @@
 # ##############################
 # This software is written by Song Cai and published under GPLv3.
 #
-# Version 1.0, August 28, 2013.
+# Version 1.1, September 23, 2013.
 # ##############################
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {
@@ -579,12 +579,12 @@ summaryDRMFEst <- function(n_samples, p_est, cdf_est, interpolation=TRUE,
       bandwidth[i] <- const * min(sd_est[i], iqr[i]/1.34) 
     }
 
-    results <- data.frame(mean=mu_est, var=var_est, sd=sd_est, Q1=q1, Q3=q3,
+    result <- data.frame(mean=mu_est, var=var_est, sd=sd_est, Q1=q1, Q3=q3,
                           IQR=iqr, bw_default=bandwidth)
 
   } else {
 
-    results <- data.frame(mean=mu_est, var=var_est, sd=sd_est, Q1=q1, Q3=q3,
+    result <- data.frame(mean=mu_est, var=var_est, sd=sd_est, Q1=q1, Q3=q3,
                           IQR=iqr)
 
   }
@@ -593,9 +593,9 @@ summaryDRMFEst <- function(n_samples, p_est, cdf_est, interpolation=TRUE,
   for (i in 1:m) {
     rnames <- c(rnames, paste("F", i, sep=""))
   }
-  row.names(results) = rnames 
+  row.names(result) = rnames 
 
-  return(results)
+  return(result)
 }
 
 displayPar <- function(par, m) {
@@ -700,14 +700,14 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
                                      basis_func=basis_func,
                                      d=d)))
     mdele <- drm_opt$par
-    mname <- NULL
+    mnames <- NULL
     for (i in 1:m) {
-      mname <- c(mname, paste("alpha[", i, "]", sep=""))
+      mnames <- c(mnames, paste("alpha[", i, "]", sep=""))
       for (j in 1:d) {
-        mname <- c(mname, paste("beta[", i, ",", j, "]", sep=""))
+        mnames <- c(mnames, paste("beta[", i, ",", j, "]", sep=""))
       }
     }
-    names(mdele) <- mname
+    names(mdele) <- mnames
 
     negldl <- drm_opt$value
 
@@ -813,14 +813,14 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
                                      model=basis_func,
                                      d=d)))
     mdele <- drm_opt$par
-    mname <- NULL
+    mnames <- NULL
     for (i in 1:m) {
-      mname <- c(mname, paste("alpha[", i, "]", sep=""))
+      mnames <- c(mnames, paste("alpha[", i, "]", sep=""))
       for (j in 1:d) {
-        mname <- c(mname, paste("beta[", i, ",", j, "]", sep=""))
+        mnames <- c(mnames, paste("beta[", i, ",", j, "]", sep=""))
       }
     }
-    names(mdele) <- mname
+    names(mdele) <- mnames
 
     negldl <- drm_opt$value
 
@@ -1442,6 +1442,197 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
     }
 
   }
+
+}
+
+quantileCompWald <- function(quantileDRMObject, n_total,
+                             pairwise=TRUE, p_adj_method="none",
+                             A=NULL, b=NULL) {
+
+  # Arguments handling and checking
+  if (is.list(quantileDRMObject)) {
+
+    if(is.null(quantileDRMObject$est)) {
+      stop("The argument quantileDRMObject is not a proper output from quantileDRM() function!")
+    }
+
+    if(is.null(quantileDRMObject$cov)) {
+      stop("To perform Wald-type test, the covariance matrix of the quantile estimators must be estimated. Specify 'cov=TRUE' in quantileDRM() function!")
+
+    }
+
+  } else {
+
+    stop("The argument quantileDRMObject is not a proper output from quantileDRM() function!")
+
+  }
+
+  nK <- length(quantileDRMObject$est)
+
+  if (!is.logical(pairwise)) {
+    stop("The argument 'pairwise' must be a logical variable (either TRUE or FALSE)!")
+  }
+
+  if ((pairwise==TRUE) && (nK <= 1)) {
+    warning("Only one quantile estimate available, no pairwise comparison to be done! The argument 'pairwise' is set to be FALSE!")
+    pairwise <- FALSE
+  }
+
+  if (pairwise==FALSE && is.null(A) && is.null(b)) {
+    stop("Nonthing to be done! Specify 'pairwise=TRUE' for pairwise comparison or 'A' and 'b' for linear hypothesis about the quantiles.")
+  }
+
+  if ( (is.null(A) && !is.null(b)) || (!is.null(A) && is.null(b)) ) {
+    stop("To test a linear hypothesis, both 'A' - the left-hand side matrix in the linear hypothesis, and 'b' - the right-hand side vector in the linear hypothesis, must be specified.")
+  }
+
+  if (!is.null(A)) {
+
+    if (!is.matrix(A)) {
+
+      stop("The argument 'A' must be a non-singular matrix whose number of columns equals length(quantileDRMObject$est)!")
+
+    } else {
+
+      # Checking the dimension of A
+      if (ncol(A) != nK) {
+        stop("The number of columns of the matrix 'A' must equal length(quantileDRMObject$est)!")
+      }
+      
+      if (nrow(A) > nK) {
+        stop("The number of rows of the matrix 'A' must be no bigger than length(quantileDRMObject$est)!")
+      }
+
+      # Checking the singularity of A
+      if (is_exact_singular(A)) {
+        stop("The argument 'A' is exactly singular. It must be a non-singular matrix!")
+      } else {
+        rcond_A <- rcond(A)
+        if (rcond_A < 1.1*.Machine$double.eps) {
+          stop(paste("The argument 'A' is computationally singular: reciprocal condition number = ", rcond_A, ". It must be a computationally non-singular matrix!", sep=""))
+        }
+      }
+
+    }
+
+    if (is.matrix(b)) {
+      if (ncol(b) != 1) {
+        stop("The argument 'b' must be a vector or a matrix of a single column whose length equals length(quantileDRMObject$est)!")
+      } else {
+        b <- as.vector(b)
+      }
+    }
+
+    if (!is.vector(b)) {
+      stop("The argument 'b' must be a vector or a matrix of a single column whose length equals length(quantileDRMObject$est)!")
+
+    } else {
+
+      if (length(b) != nrow(A)) {
+        stop("The length of 'b' must equal the number of rows of the matrix 'A'!")
+      }
+
+    }
+
+  }
+
+  result <- list()
+
+  if ((pairwise==TRUE) && (nK > 1)) {
+
+    p_val_pair <- numeric(0)
+
+    for (i in 1:(nK-1)) {
+
+      for (j in (i+1):nK) {
+
+        # Wald statistic
+        wald_stat_tmp <- 
+          n_total * (quantileDRMObject$est[i] - quantileDRMObject$est[j])^2 /
+          ( rbind(c(-1,1))%*% quantileDRMObject$cov[c(i, j), c(i, j)] %*%
+           cbind(c(-1,1)) ) 
+
+        # p-value
+        p_val_pair <- c( p_val_pair, (1 - pchisq(wald_stat_tmp, df=1)) )
+
+        rm(wald_stat_tmp)
+
+      }
+
+    }
+
+    # p-value adjustment for multiple comparisons
+    if (p_adj_method != "none") {
+      p_val_pair <- p.adjust(p_val_pair, method=p_adj_method)
+    }
+    
+    # create output p-value matrix (lower triangular)
+    p_val_pair_mat <- matrix(rep(NA, nK*nK), nK, nK)
+    p_val_pair_mat[lower.tri(p_val_pair_mat)] <- p_val_pair
+
+    p_val_names <- character(0)
+    for (i in 1:nK) {
+      p_val_names <- c(p_val_names, paste("q", i, sep=""))
+    }
+    rownames(p_val_pair_mat) <- p_val_names
+    colnames(p_val_pair_mat) <- p_val_names
+
+    result <- c(result, list(p_val_pair=p_val_pair_mat))
+
+  }
+
+  if (!is.null(A)) {
+
+    # Define test-statistic
+    vec_tmp <- A %*% quantileDRMObject$est - cbind(b)
+    wald_stat_tmp <- as.numeric( n_total *
+      crossprod( vec_tmp, solve( (A %*% quantileDRMObject$cov %*% t(A)),
+                                vec_tmp ) ) )
+
+    # p-value
+    df_tmp <- nrow(A)
+    p_val_linear_test <- 1 - pchisq(wald_stat_tmp, df=df_tmp)
+
+    rm(vec_tmp, df_tmp, wald_stat_tmp)
+
+    result <- c(result, list(p_val=p_val_linear_test))
+
+  }
+
+  return(result)
+
+}
+
+is_exact_singular <- function(x) {
+
+  # Arguments handling and checking
+  if (is.vector(x)) x <- as.matrix(x)
+  if (!is.matrix(x)) stop("The argument of the function is_exact_singluar() must be a numerical vector or matrix!")
+
+  m <- nrow(x)
+  n <- ncol(x)
+  storage.mode(x) = "double"
+
+  # LAPACK subroutine DGETRF (double precision) computes an LU factorization
+  # of a general M-by-N matrix A using partial pivoting with row interchanges.
+  # It also provides test for exact singularity.
+  #
+  # subroutine dgetrf(integer M, 
+  #                   integer N,
+  #                   double precision, dimension( lda, * ) A,
+  #                   integer LDA,
+  #                   integer, dimension( * ) IPIV,
+  #                   integer INFO 
+  #                  )
+  #
+  # Input: M, N, A, LDA
+  # Output: A, IPIV, INFO
+
+  lu_decomp <- .Fortran("dgetrf", as.integer(m), as.integer(n), x,
+                        as.integer(m), integer(min(m, n)),
+                        info=integer(1), DUP=FALSE)
+
+  return(lu_decomp$info > 0)
 
 }
 

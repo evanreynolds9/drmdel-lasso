@@ -1,6 +1,6 @@
 \name{cdfDRM}
 \alias{cdfDRM}
-\title{Estimate the CDF of the populations under DRM}
+\title{Estimate the CDF of the populations under the DRM}
 \description{
   Suppose we have m+1 samples, labeled as 0, 1, ..., m, whose
   population distributions satisfy the density ratio model (DRM)

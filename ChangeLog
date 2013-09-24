@@ -1,0 +1,8 @@
+2013-09-23, Song Cai, drmdel v1.1
+  * R/drmdel.R: added new function quantileCompWald() for performing Wald-test
+  for pairwise comparison and linear hypotheses about quantiles.
+
+  * src/Makevars(.win): fixed a minor bug.
+
+2013-08-28, Song Cai, drmdel v1.0
+  * drmdel package: version 1.0 released. 

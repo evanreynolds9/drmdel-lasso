@@ -124,11 +124,12 @@ n_total <- sum(n_samples)
 
 # p-value
 (p_val <- 1 - pnorm(abs(wald_stat)))
+1-pchisq(wald_stat^2, df=1)
 # P-value is 0.269. Don't reject the null.
 # --------------------
 
 # ----------Example 2----------
-# Suppose now we want to test 
+# Suppose now we want to test
 #     H_0: q_{0,0.05} = q_{2,0.05}
 #           against
 #     H_0: q_{0,0.05} != q_{2,0.05}
@@ -143,6 +144,42 @@ qe1
 
 # p-value
 (p_val1 <- 1 - pnorm(abs(wald_stat1)))
+# P-value is 0. Reject the null.
+# ---------------
+
+# ----------Example 3----------
+# Suppose now we want to test
+#     H_0: q_{0,0.05} = q_{2,0.05}
+#           against
+#     H_0: q_{0,0.05} != q_{2,0.05}
+
+A <- matrix(rep(0, 12), 3, 4)
+A[1,] <- c(1, -1, 0, 0)
+A[2,] <- c(0, 1, -1, 0)
+A[3,] <- c(0, 0, 1, -1)
+b <- rep(0, 3)
+# Calculate quantile estimator and the corresponding covariance matrix
+qe3 <- quantileDRM(k=c(0, 1, 2, 3), p=c(0.05, 0.05, 0.05, 0.05), drmfit=drmfit)
+qe3
+
+# Quantile comparisons
+qComp <- quantileCompWald(qe3, n_total=n_total, A=A, b=b)
+qComp1 <- quantileCompWald(qe3, n_total=n_total, p_adj_method="holm", A=A, b=b)
+quantileCompWald(qe3, n_total=n_total, pairwise=FALSE, A=A, b=b)
+#quantileCompWald(qe3, n_total=n_total, pairwise=FALSE)
+
+ttt <- qComp$p_val_pair[lower.tri(qComp$p_val_pair)]
+p.adjust(ttt)
+p.adjust(ttt, method="holm")
+p.adjust(ttt, method="hochberg")
+p.adjust(ttt, method="none")
+
+# Define test-statistic
+( wald_stat1 <- sqrt(n_total) * (qe3$est[1] - qe3$est[3])
+    / sqrt( rbind(c(-1,1))%*% qe3$cov[c(1,3), c(1,3)] %*% cbind(c(-1,1)) ) )
+
+# p-value
+(p_val1 <- 1 - pchisq(wald_stat1^2, df=1))
 # P-value is 0. Reject the null.
 # ---------------
 # ##############################

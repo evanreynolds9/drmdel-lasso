@@ -74,7 +74,8 @@ drmdel(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
     values to zeros, i.e. default, for all parameters to ensure
     that, at initial values, the dual log-likelihood is finite!}
   \item{g_null}{the function specifying the null hypothesis about
-    DRM parameter beta if there is one; The default is NULL.}
+    DRM parameter \eqn{\beta}{beta} if there is one; The default
+    is NULL.}
   \item{g_null_gr}{a funciton specifying the gradient of g_null,
     which must return a matrix of dimension m*(d+1) by
     dim(par_null), if available. The default is NULL.}
@@ -134,7 +135,7 @@ drmdel(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
   \item{delr}{dual-empirical-likelihood ratio statistic evaluated
     under the null hypothesis. If no null hypotheis (g_null) is
     given, this is simply -2*negldl.}
-  \item{df}{degrees of freedom of the Chisquare limiting
+  \item{df}{degrees of freedom of the chi-square limiting
     distribution for DELR statistic under the null.}
   \item{p_val}{p-vale of the DELR test.}
   \item{p_est}{estimated \eqn{dF_k(x)}{dF_k(x)}'s at the observed

@@ -1,6 +1,6 @@
 \name{quantileDRM}
 \alias{quantileDRM}
-\title{Estimate the quantiles of the populations under DRM}
+\title{Estimate the quantiles of the populations under the DRM}
 \description{
   Suppose we have m+1 samples, labeled as
   \eqn{0, \, 1, \, \ldots, \, m}{0, 1, ..., m},
