@@ -1628,9 +1628,9 @@ is_exact_singular <- function(x) {
   # Input: M, N, A, LDA
   # Output: A, IPIV, INFO
 
-  lu_decomp <- .Fortran("dgetrf", as.integer(m), as.integer(n), x,
-                        as.integer(m), integer(min(m, n)),
-                        info=integer(1), DUP=FALSE)
+  lu_decomp <- .C("dgetrfCWrapper", as.double(m), as.double(n),
+                  as.double(x), as.double(m), double(min(m, n)),
+                  info=double(1), DUP=FALSE)
 
   return(lu_decomp$info > 0)
 

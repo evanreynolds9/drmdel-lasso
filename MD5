@@ -1,7 +1,7 @@
-f957e0c56f36e4f57d589f0ec5e461b8 *ChangeLog
-229e94361aff384014bb184fe5013748 *DESCRIPTION
+6be1ac58c934df59f80b61d75fdcd203 *ChangeLog
+c55f8e537f629190b2db44ef6212b2de *DESCRIPTION
 9ab8186f00d35c4d5c31943b578fbe3b *NAMESPACE
-e13f1138c08219431fd5b677d097c64e *R/drmdel.R
+a62dbe2b576e8fd22bf860faeb4ea531 *R/drmdel.R
 121d381232fb99dda3a2477475b9fc14 *inst/examples/examples.R
 ebe7d99521fee8444a465d798c83b948 *man/cdfDRM.Rd
 1dfb7b3103f985b46cecb238b213342d *man/densityDRM.Rd
@@ -12,7 +12,9 @@ ef75a0ccd5ce0c56a257cb514f98bf9b *man/quantileCompWald.Rd
 86ae64f7e443e6287c2b51f0f7443bef *man/summaryDRM.Rd
 3996e7c16bfb96fad295ee425815cb4d *src/Makevars
 3996e7c16bfb96fad295ee425815cb4d *src/Makevars.win
-1be3fdb1e0a4c8afbb80d21aa36de462 *src/drmdel.c
-880112073c5d9d6d65b2f776ead8b3e1 *src/hFuncs.c
-5a4d36e82e1d1ba8a1469328ef93c30a *src/hFuncs.h
+4fe75275913dbb1b5eb001a45c69d46a *src/basisFuncs.c
+3ec05eced34c73c3176c85d18f31b6f8 *src/basisFuncs.h
+39c10cfbd9730afa74154d9169cfc3e1 *src/drmdel.c
+664e47695e70285c68895cfa3a9c35d0 *src/utilities.c
+fc70e4200253e24f5bdeb59b0332503c *src/utilities.h
 3fa84b9527841c855b3a40735e11eb2b *tests/drmdelTest.R

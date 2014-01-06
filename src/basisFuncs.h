@@ -1,9 +1,9 @@
 /* This software is written by Song Cai and published under GPLv3.
  *
- * Version 1.0, August 22, 2013.
+ * Version 1.2, January 6, 2014.
  */
 
-/* h(x) functions */
+/* Basis functions, h(x), for dentity ratio models */
 
 /* model 1 */
 void h1x(double x, /*input*/

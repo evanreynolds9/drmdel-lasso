@@ -1,6 +1,6 @@
 /* This software is written by Song Cai and published under GPLv3.
  *
- * Version 1.0, August 22, 2013.
+ * Version 1.2, January 6, 2014.
  */
 
 #include <stdio.h>
@@ -8,54 +8,8 @@
 #include <math.h>
 #include <R.h>
 #include <Rinternals.h>
-#include "hFuncs.h"
-
-/*void errMsg(char err_text[])*/
-/*[> Standard error handler <]*/
-/*{*/
-    /*fprintf(stderr, "Program run-time error:\n");*/
-    /*fprintf(stderr, "    %s\n", err_text);*/
-    /*fprintf(stderr, "...now exiting to system...\n");*/
-    /*exit(1);*/
-/*}*/
-
-void errMsg(char err_text[])
-/* Standard error handler; R version */
-{
-    error(err_text);
-}
-
-void kroneckerProd(double *restrict* restrict A, /*inputs*/
-    unsigned long m, unsigned long n, /*inputs*/
-    double *restrict* restrict B, /*inputs*/
-    unsigned long p, unsigned long q, /*inputs*/
-    double *restrict* restrict C /*output*/)
-/* Kronecker product of A and B
- * Inputs:
- *   A -- a m by n matrix;
- *   B -- a p by q matrix.
- * Output:
- *   C -- a mp by nq matrix.
- */
-{
-  /* loop indices */
-  unsigned long i, j, k, l;
-
-  for (i = 0; i < m; ++i) {
-    for (j = 0; j < p; ++j) {
-
-      for (k = 0; k < n; ++k) {
-        for (l = 0; l < q; ++l) {
-
-          C[(i*p + j)][(k*q + l)] = A[i][k]*B[j][l];
-
-        }
-      }
-
-    }
-  }
-
-}
+#include "basisFuncs.h"
+#include "utilities.h"
 
 void lp_val(unsigned long m, unsigned long d, double * restrict h, /*inputs*/
     double *restrict* restrict par_mat, /*inputs*/
