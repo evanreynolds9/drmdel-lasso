@@ -1,3 +1,16 @@
+2014-04-08, Song Cai, drmdel v1.3
+  * R/drmdel.R:
+    * function drmdel: remove initial value inputs; change in null mapping
+	specification for improved usability.
+    * function quantileDRM: the previous input arguments "adjust" and
+	"adj_factor" are now renamed to "adj" and "adj_val", respectively; and
+	"adj_val" now is allowed to be a numeric vector instead of a single value.
+    * function densityDRM: the useless "adjust" and "adj_factor" input
+	arguments in this function are removed.
+
+  * Minor bugs fixes, changes in function and argument names, and some changes
+  in terminology.
+
 2014-01-06, Song Cai, drmdel v1.2
   * Call to LAPACK routines: now implemented using C wrappers to increase
   portability.

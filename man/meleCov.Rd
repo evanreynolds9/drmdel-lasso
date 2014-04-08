@@ -1,12 +1,12 @@
-\name{mdeleCov}
-\alias{mdeleCov}
-\title{Estimate the covariance matrix of the MDELE}
+\name{meleCov}
+\alias{meleCov}
+\title{Estimate the covariance matrix of the MELE}
 \description{
-  Estimate the covariance matrix of the maximum dual empirical
-  likelihood estimator (MDELE).
+  Estimate the covariance matrix of the maximum empirical
+  likelihood estimator (MELE).
 }
 \usage{
-mdeleCov(drmfit)
+meleCov(drmfit)
 }
 \arguments{
   \item{drmfit}{a fitted DRM object (an output from the
@@ -14,7 +14,7 @@ mdeleCov(drmfit)
     details.}
 }
 \value{
-  The estimated covariance matrix of the MDELE.
+  The estimated covariance matrix of the MELE.
 }
 \examples{
 # Data generation
@@ -32,9 +32,9 @@ x <- c(x0, x1, x2, x3, x4)
 # the built-in basis function 6.
 drmfit <- drmdel(x=x, n_samples=n_samples, basis_func=6)
 
-# Check MDELE
-drmfit$mdele
+# Check MELE
+drmfit$mele
 
-# Estimate the covariance matrix of the MDELE
-mdeleCov(drmfit)
+# Estimate the covariance matrix of the MELE
+meleCov(drmfit)
 }

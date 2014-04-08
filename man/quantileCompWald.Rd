@@ -71,7 +71,7 @@ quantileCompWald(quantileDRMObject, n_total, pairwise=TRUE,
   J. Chen and Y. Liu (2013),
   Quantile and quantile-function estimations under density ratio
   model.
-  To appear in \emph{The Annals of Statistics}, 2013.
+  \emph{The Annals of Statistics}, 41(3):1669-1692.
 }
 \examples{
 # Data generation

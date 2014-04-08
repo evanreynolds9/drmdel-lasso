@@ -14,8 +14,7 @@
   points.
 }
 \usage{
-densityDRM(k, drmfit, interpolation=TRUE, adjust=FALSE,
-           adj_factor=NULL, ...)
+densityDRM(k, drmfit, interpolation=TRUE, ...)
 }
 \arguments{
   \item{k}{the label of the population whose density is to be
@@ -24,24 +23,14 @@ densityDRM(k, drmfit, interpolation=TRUE, adjust=FALSE,
   \item{drmfit}{a fitted DRM object (an output from the
     \code{\link{drmdel}} function). See \code{\link{drmdel}} for
     details.}
-  \item{interpolation}{an argument passed to the function
-    \code{\link{quantileDRM}} for calculating the default
-    bandwidth for the kernel density estimator, if bandwidth (bw)
-    is not specfied as a ... argument passing to the R functin
-    \code{density}. The default is TRUE. See
-    \code{\link{quantileDRM}} for details.}
-  \item{adjust}{an argument passed to the function
-    \code{\link{quantileDRM}} for calculating the default
-    bandwidth for the kernel density estimator, if bandwidth (bw)
-    is not specfied as a ... argument passing to R functin
-    \code{density}. The default is FALSE. See
-    \code{\link{quantileDRM}} for details.}
-  \item{adj_factor}{an argument passed to the function
-    \code{\link{quantileDRM}} for calculating the default
-    bandwidth for the kernel density estimator, if bandwidth (bw)
-    is not specfied as a ... argument passing to R functin
-    \code{density}. The default is NULL. See
-    \code{\link{quantileDRM}} for details.}
+  \item{interpolation}{a logical variable to be passed to
+    the function \code{\link{quantileDRM}} and then
+    ultimately to the function \code{\link{cdfDRM}}, for
+    estimating the population standard deviations and IQRs
+    required for calculating the default bandwidth for the
+    kernel density estimator. See \code{\link{quantileDRM}}
+    and \code{\link{cdfDRM}} for details. The default value
+    is TRUE.}
   \item{...}{further arguments to be passed to the \code{density}
     function, which performs kernel density estimation in R. See
     \code{help(density)} for details. One should not pass "x" and
@@ -63,13 +52,14 @@ densityDRM(k, drmfit, interpolation=TRUE, adjust=FALSE,
   deviation and inter-quartile range of the estimated CDF
   \eqn{F_k}{F_k}, respectively.
 
-  If bandwidth (bw) is not specfied as a ... argument passing to
-  the R functin \code{density}, the default bandwidth (as
-  described above) will be calculated. That calculation involves
-  the estimation of population quartiles. In this situation, the
-  arguments "interpolation", "adjust", and "adj_factor" are passed
-  to \code{\link{quantileDRM}} for quartile estimations. See
-  \code{\link{quantileDRM}} for details.
+  If bandwidth (bw) is not specfied as a ... argument
+  passing to the R functin \code{density}, the default
+  bandwidth (as described above) will be calculated. That
+  calculation involves the estimation of population
+  quartiles. In this situation, the arguments
+  "interpolation" is passed to \code{\link{quantileDRM}} for
+  quartile estimations. See \code{\link{quantileDRM}} for
+  details.
 }
 \references{
   K. Fokianos (2004),
@@ -80,7 +70,7 @@ densityDRM(k, drmfit, interpolation=TRUE, adjust=FALSE,
   J. Chen and Y. Liu (2013),
   Quantile and quantile-function estimations under density ratio
   model.
-  To appear in \emph{The Annals of Statistics}, 2013.
+  \emph{The Annals of Statistics}, 41(3):1669-1692.
 }
 \examples{
 # Data generation

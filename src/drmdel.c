@@ -1,6 +1,6 @@
 /* This software is written by Song Cai and published under GPLv3.
  *
- * Version 1.2, January 6, 2014.
+ * Version 1.3, April 08, 2014.
  */
 
 #include <stdio.h>
@@ -78,7 +78,7 @@ double logDualL(unsigned long n_total, /*inputs*/
     double *restrict* restrict par_mat, /*inputs*/
     void (*h_func)(double, double * restrict), /*input*/
     double *restrict* restrict x_mat /*inputs*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -88,7 +88,7 @@ double logDualL(unsigned long n_total, /*inputs*/
  *   h_func -- the basis function of the DRM;
  *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_val -- value of ldl (log dual likelihood) at a given "par" value.
+ *   ldl_val -- value of ldl (log dual empirical likelihood) at a given "par" value.
  */
 {
   /* loop indices */
@@ -161,7 +161,7 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
     double * restrict par, /*inputs*/
     double * restrict model, double * restrict x, /*inputs*/
     double * restrict ldl_val /*output*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -171,7 +171,7 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
  *   h_func -- the basis function of the DRM;
  *   x -- data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_val -- value of ldl (log dual likelihood) at a given "par" value.
+ *   ldl_val -- value of ldl (log dual empirical likelihood) at a given "par" value.
  */
 {
   /* loop indices */
@@ -207,7 +207,7 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
     x_mat[i] = x_mat[i-1] + n_samples_use[i - 1];
   }
 
-  /* calculating log dual-likelihood value at 'par' */
+  /* calculating log dual empirical likelihood value at 'par' */
   switch ((unsigned long)*model)
   {
     case 1 :
@@ -351,7 +351,7 @@ void logDualLGr(unsigned long n_total, /*inputs*/
     void (*h_func)(double, double * restrict), /*input*/
     double *restrict* restrict x_mat, /*inputs*/
     double *restrict* restrict ldl_gr_mat /*outputs*/)
-/* Calculating the gradient of log dual-likelihood (+ n \log n) at a given
+/* Calculating the gradient of log dual empirical likelihood (+ n \log n) at a given
  * parameter value.
  * Inputs:
  *   n_total -- total sample size;
@@ -362,7 +362,7 @@ void logDualLGr(unsigned long n_total, /*inputs*/
  *   h_func -- the basis function of the DRM;
  *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_gr_mat -- a 2-D pointer array of dimension m by (d+1); value of the gradient of the ldl (log dual likelihood) at a given "par" value.
+ *   ldl_gr_mat -- a 2-D pointer array of dimension m by (d+1); value of the gradient of the ldl (log dual empirical likelihood) at a given "par" value.
  */
 {
   /* loop indices */
@@ -452,7 +452,7 @@ void logDualLGrWrapper(double * restrict n_total, /*inputs*/
     double * restrict par, /*inputs*/
     double * restrict model, double * restrict x, /*inputs*/
     double * restrict ldl_gr /*output*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -462,7 +462,7 @@ void logDualLGrWrapper(double * restrict n_total, /*inputs*/
  *   h_func -- the basis function of the DRM;
  *   x -- data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_gr -- a vector of length m*(d+1); value of the gradient of the ldl (log dual likelihood) at a given "par" value.
+ *   ldl_gr -- a vector of length m*(d+1); value of the gradient of the ldl (log dual empirical likelihood) at a given "par" value.
  */
 {
   /* loop indices */
@@ -510,7 +510,7 @@ void logDualLGrWrapper(double * restrict n_total, /*inputs*/
   }
 
 
-  /* calculating log dual-likelihood value at 'par' */
+  /* calculating log dual empirical likelihood value at 'par' */
   switch ((unsigned long)*model)
   {
     case 1 :
@@ -667,7 +667,7 @@ void logDualLGrWrapper(double * restrict n_total, /*inputs*/
     /*double *restrict* restrict x_mat, [>inputs<]*/
     /*double * restrict ldl_val, [>outputs<]*/
     /*double *restrict* restrict ldl_gr_mat [>outputs<])*/
-/* Calculating log dual-likelihood (+ n \log n) and its derivative at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) and its derivative at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -677,8 +677,8 @@ void logDualLGrWrapper(double * restrict n_total, /*inputs*/
  *   h_func -- h(x);
  *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_val -- value of ldl (log dual likelihood) at a given "par" value.
- *   ldl_gr_mat -- a 2-D pointer array of dimension m by (d+1); value of the gradient of the ldl (log dual likelihood) at a given "par" value.
+ *   ldl_val -- value of ldl (log dual empirical likelihood) at a given "par" value.
+ *   ldl_gr_mat -- a 2-D pointer array of dimension m by (d+1); value of the gradient of the ldl (log dual empirical likelihood) at a given "par" value.
  */
 /*{*/
   /*[> loop indices <]*/
@@ -794,7 +794,7 @@ void logDualLHessian(unsigned long n_total, /*inputs*/
     void (*h_func)(double, double * restrict), /*input*/
     double * restrict x, /*inputs*/
     double *restrict* restrict ldl_hessian_mat /*outputs*/)
-/* Calculating the Hessian of log dual-likelihood (+ n \log n) at a given
+/* Calculating the Hessian of log dual empirical likelihood (+ n \log n) at a given
  * parameter value.
  * Inputs:
  *   n_total -- length of data;
@@ -915,7 +915,7 @@ void logDualLHessianWrapper(double * restrict n_total, /*inputs*/
     double * restrict par, double * restrict model, /*inputs*/
     double * restrict x, /*inputs*/
     double * restrict ldl_hessian /*output*/)
-/* Calculating the Hessian of log dual-likelihood (+ n \log n) at a given
+/* Calculating the Hessian of log dual empirical likelihood (+ n \log n) at a given
  * parameter value.
  * Inputs:
  *   n_total -- length of data;
@@ -957,7 +957,7 @@ void logDualLHessianWrapper(double * restrict n_total, /*inputs*/
       (((unsigned long)*m) * ((unsigned long)*d + 1));
   }
 
-  /* calculating log dual-likelihood value at 'par' */
+  /* calculating log dual empirical likelihood value at 'par' */
   switch ((unsigned long)*model)
   {
     case 1 :
@@ -1205,7 +1205,7 @@ void aEstWrapper(double * restrict r, double * restrict s, /*inputs*/
     par_mat[i] = par_mat[i-1] + ((unsigned long)*d + 1);
   }
 
-  /* calculating log dual-likelihood value at 'par' */
+  /* calculating log dual empirical likelihood value at 'par' */
   switch ((unsigned long)*model)
   {
     case 1 :
@@ -1468,7 +1468,7 @@ void BEstWrapper(double * restrict r, double * restrict n_r, /*inputs*/
     par_mat[i] = par_mat[i-1] + ((unsigned long)*d + 1);
   }
 
-  /* calculating log dual-likelihood value at 'par' */
+  /* calculating log dual empirical likelihood value at 'par' */
   switch ((unsigned long)*model)
   {
     case 1 :
@@ -1607,7 +1607,7 @@ void Wmat(double n_total, /*inputs*/
     double * restrict n_samples, /*inputs*/
     unsigned long m, unsigned long d, /*inputs*/
     double *restrict* restrict W /*output*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size (double, not unsigned long!);
  *   n_samples -- a (double, not unsigned long!) vector of length m+1
@@ -1676,7 +1676,7 @@ void WmatWrapper(double * restrict n_total, /*inputs*/
     double * restrict n_samples, /*inputs*/
     double * restrict m, double * restrict d,
     double * restrict W /*output*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -2249,7 +2249,7 @@ double logDualLUf(unsigned long n_total, /*inputs*/
     double *restrict* restrict par_mat, /*inputs*/
     SEXP h_func, SEXP env, /*input*/
     double *restrict* restrict x_mat /*inputs*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -2259,7 +2259,7 @@ double logDualLUf(unsigned long n_total, /*inputs*/
  *   h_func -- the basis function of the DRM;
  *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_val -- value of ldl (log dual likelihood) at a given "par" value.
+ *   ldl_val -- value of ldl (log dual empirical likelihood) at a given "par" value.
  */
 {
   /* loop indices */
@@ -2339,7 +2339,7 @@ double logDualLUf(unsigned long n_total, /*inputs*/
 
 SEXP logDualLUfWrapper(SEXP n_total, SEXP n_samples, SEXP m, SEXP d, SEXP par,
     SEXP h_func, SEXP env, SEXP x)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -2349,7 +2349,7 @@ SEXP logDualLUfWrapper(SEXP n_total, SEXP n_samples, SEXP m, SEXP d, SEXP par,
  *   h_func -- the basis function of the DRM;
  *   x -- data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_val -- value of ldl (log dual likelihood) at a given "par" value.
+ *   ldl_val -- value of ldl (log dual empirical likelihood) at a given "par" value.
  */
 {
   double * restrict n_total_c;
@@ -2426,7 +2426,7 @@ void logDualLGrUf(unsigned long n_total, /*inputs*/
     SEXP h_func, SEXP env, /*input*/
     double *restrict* restrict x_mat, /*inputs*/
     double *restrict* restrict ldl_gr_mat /*outputs*/)
-/* Calculating the gradient of log dual-likelihood (+ n \log n) at a given
+/* Calculating the gradient of log dual empirical likelihood (+ n \log n) at a given
  * parameter value.
  * Inputs:
  *   n_total -- total sample size;
@@ -2437,7 +2437,7 @@ void logDualLGrUf(unsigned long n_total, /*inputs*/
  *   h_func -- the basis function of the DRM;
  *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
  * Outputs:
- *   ldl_gr_mat -- a 2-D pointer array of dimension m by (d+1); value of the gradient of the ldl (log dual likelihood) at a given "par" value.
+ *   ldl_gr_mat -- a 2-D pointer array of dimension m by (d+1); value of the gradient of the ldl (log dual empirical likelihood) at a given "par" value.
  */
 {
   /* loop indices */
@@ -2533,7 +2533,7 @@ void logDualLGrUf(unsigned long n_total, /*inputs*/
 
 SEXP logDualLGrUfWrapper(SEXP n_total, SEXP n_samples, SEXP m, SEXP d,
     SEXP par, SEXP h_func, SEXP env, SEXP x /*input*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;
@@ -2558,7 +2558,7 @@ SEXP logDualLGrUfWrapper(SEXP n_total, SEXP n_samples, SEXP m, SEXP d,
   x_c = REAL(x);
 
   /* Outputs:
-   *   ldl_gr -- a vector of length m*(d+1); value of the gradient of the ldl (log dual likelihood) at a given "par" value.
+   *   ldl_gr -- a vector of length m*(d+1); value of the gradient of the ldl (log dual empirical likelihood) at a given "par" value.
    */
   SEXP ldl_gr;
   PROTECT(ldl_gr = allocVector(REALSXP, ((unsigned long)*m_c) * ((unsigned
@@ -2634,7 +2634,7 @@ void logDualLHessianUf(unsigned long n_total, /*inputs*/
     SEXP h_func, SEXP env, /*input*/
     double * restrict x, /*inputs*/
     double *restrict* restrict ldl_hessian_mat /*outputs*/)
-/* Calculating the Hessian of log dual-likelihood (+ n \log n) at a given
+/* Calculating the Hessian of log dual emprical likelihood (+ n \log n) at a given
  * parameter value.
  * Inputs:
  *   n_total -- length of data;
@@ -2762,7 +2762,7 @@ void logDualLHessianUf(unsigned long n_total, /*inputs*/
 
 SEXP logDualLHessianUfWrapper(SEXP n_total, SEXP n_samples, SEXP m, SEXP d,
     SEXP par, SEXP h_func, SEXP env, SEXP x /*input*/)
-/* Calculating log dual-likelihood (+ n \log n) at a given parameter value.
+/* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
  * Inputs:
  *   n_total -- total sample size;
  *   n_samples -- a vector of length m+1 specifying the size of each sample;

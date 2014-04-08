@@ -21,8 +21,8 @@
   \eqn{F_0}{F_0} is assumed.
 }
 \usage{
-drmdel(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
-       g_null_gr=NULL, par_dim_null=NULL, par_init_null=NULL, ...)
+drmdel(x, n_samples, basis_func, g_null=NULL,
+       g_null_jac=NULL, par_dim_null=NULL, ...)
 }
 \arguments{
   \item{x}{a vector formed by concatenating multiple samples,
@@ -68,22 +68,14 @@ drmdel(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
     If the basis function one wants to use is in the above list,
     one should use the built-in function to maximize the speed of
     model fitting.}
-  \item{par_init}{a vector of length m*(d+1) specifying the
-    initial value of the parameter vector; if not specified, all
-    set to zeors. In fact, it is better to always set initial
-    values to zeros, i.e. default, for all parameters to ensure
-    that, at initial values, the dual log-likelihood is finite!}
   \item{g_null}{the function specifying the null hypothesis about
     DRM parameter \eqn{\beta}{beta} if there is one; The default
     is NULL.}
-  \item{g_null_gr}{a funciton specifying the gradient of g_null,
-    which must return a matrix of dimension m*(d+1) by
+  \item{g_null_jac}{a funciton specifying the Jacobian matrix of g_null,
+    which must return a matrix of dimension m*d by
     dim(par_null), if available. The default is NULL.}
   \item{par_dim_null}{dimension of the parameter vector in null
     hypothesis if there is one. The default is NULL.}
-  \item{par_init_null}{a vector of length par_dim_null specifying
-    the initial value of the parameter vector under null; if not
-    specified (default), all set to zeros (recommended).}
   \item{...}{further arguments to be passed to the R function
     \code{optim} for maximizing the dual empirical likelihood. See
     \code{help(optim)} for details. In the \code{\link{drmdel}}
@@ -108,7 +100,7 @@ drmdel(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
 
             rho -- sample proportion: n_samples/n_total.
   }
-  \item{mdele}{maximum dual empirical likelihood estimator (MDELE)
+  \item{mele}{maximum empirical likelihood estimator (MELE)
     of the model parameters. The output is a vector organized in
     the following form:
     \deqn{
@@ -127,17 +119,18 @@ drmdel(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
     }
   }
   \item{info_mat}{estimated information matrix.}
-  \item{negldl}{negative log dual-likelihood evaluated at mdele.}
-  \item{mdele_null}{mdele of the parameters under the null
+  \item{negldl}{negative log dual empirical likelihood evaluated
+    at mele.}
+  \item{mele_null}{mele of the parameters under the null
     hypothesis, if available.}
-  \item{negldl_null}{negative log dual-likelihood evaluated at
-    mdele under the null hypothesis, if available.}
-  \item{delr}{dual-empirical-likelihood ratio statistic evaluated
-    under the null hypothesis. If no null hypotheis (g_null) is
-    given, this is simply -2*negldl.}
+  \item{negldl_null}{negative log dual empirical likelihood
+    evaluated at mele under the null hypothesis, if available.}
+  \item{delr}{the value of the dual empirical likelihood
+    ratio statistic. If no null hypotheis (g_null) is given,
+    this is simply -2*negldl.}
   \item{df}{degrees of freedom of the chi-square limiting
     distribution for DELR statistic under the null.}
-  \item{p_val}{p-vale of the DELR test.}
+  \item{p_val}{p-value of the DELR test.}
   \item{p_est}{estimated \eqn{dF_k(x)}{dF_k(x)}'s at the observed
     data points, under the DRM. This is a data frame with the
     following three columns:
@@ -169,10 +162,10 @@ drmdel(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
   }
 }
 \references{
-  S. Cai, J. Chen and J. V. Zidek (2013),
-  Dual-empirical-likelihood ratio test under density ratio models
-  for multiple samples.
-  Manuscript.
+  S. Cai, J. Chen and J. V. Zidek (2014),
+  Hypothesis testing in the presence of multiple samples
+  under density ratio models.
+  Eprint, \emph{arXiv}:1309.4740
 
   A. Keziou and S. Leoni-Aubin (2008),
   On empirical likelihood for semiparametric two-sample density

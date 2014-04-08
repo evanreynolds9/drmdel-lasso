@@ -11,7 +11,7 @@
 }
 \usage{
 quantileDRM(k, p, drmfit, cov=TRUE, interpolation=TRUE,
-            adjust=FALSE, adj_factor=NULL, bw=NULL, show_bw=FALSE)
+            adj=FALSE, adj_val=NULL, bw=NULL, show_bw=FALSE)
 }
 \arguments{
   \item{k}{a vector of labels of populations whose quantiles are
@@ -30,27 +30,32 @@ quantileDRM(k, p, drmfit, cov=TRUE, interpolation=TRUE,
   \item{cov}{a logical variable specifying whether to estimate the
     covariance matrix of the quantile estimators. The default is
     TRUE.}
-  \item{interpolation}{an argument passed to the function
-    \code{\link{cdfDRM}} for estimating cumulative distribution
-    functions (CDFs). It is a logical variable specifying whether
-    to linearly interpolate the estimated cumulative distribution
-    function (CDF) to make a smooth CDF estimate; The default is
-    TRUE.}
-  \item{adjust}{a logical variable specifying whether to adjust
-    the CDF estimation by a factor when estimating quantiles; The
-    default is FALSE. See Details section.}
-  \item{adj_factor}{the adjustment factor (a single value) for the
-    estimated CDF for quantile estimation, if adjust=TRUE. The
-    default, NULL, uses \eqn{-1/(2n_{total})}{-1/(2*n_total)},
-    where \eqn{n_{total}}{n_total} is the total sample size. See
-    Details
-    section.}
-  \item{bw}{a vector of bandwidths (the same length as argument
-    "k") for kernel density estimation required for estimating the
-    covariance matrix of the quantile estimators; It could also be
-    a single value, in which case, it means that for each
-    population k, we use the same bandwidth. The default
-    bandwidth, NULL, uses that described in Chen and Liu (2013).}
+  \item{interpolation}{The EL quantile estimator is based on
+    the EL CDF estimator. Hence the way the EL CDF estimate
+    is calculated affects the result of the quantile
+    estimation. This argument is to be passed to the
+    \code{\link{cdfDRM}} function for tweaking the EL CDF
+    estimator. See \code{\link{cdfDRM}} for details.}
+  \item{adj}{a logical variable specifying whether to adjust
+    the CDF estimation by adding a term when estimating
+    quantiles; The default is FALSE. See "Details" section.}
+  \item{adj_val}{a vector of the same length as the argument
+    "k" (or as the argument "p" if the length of "k" is 1)
+    containing the values of adjustment terms for lower or
+    higher quantile estimation, if \code{adj=TRUE}. The
+    default value, NULL, uses
+    \eqn{-1/(2n_{k}[i])}{-1/2*n_k[i]}, where
+    \eqn{n_{k}[i]}{n_k[i]} is the size of the
+    k\eqn{\textsuperscript{th}}{^th} sample sample, for each
+    \eqn{i}{i}, to adjust the EL quantile estimator for
+    lower quantile estimation. See "Details" section}
+  \item{bw}{a vector of bandwidths (the same length as the
+    argument "k") for kernel density estimation required for
+    estimating the covariance matrix of the quantile
+    estimators; It could also be a single value, in which
+    case, it means that for each population k, we use the
+    same bandwidth. The default bandwidth, NULL, uses that
+    described in Chen and Liu (2013).}
   \item{show_bw}{a logical variable specifying whether to output
     bandwidths when argument cov=TRUE. The default is FALSE.}
 }
@@ -82,24 +87,27 @@ quantileDRM(k, p, drmfit, cov=TRUE, interpolation=TRUE,
   adjust an upper quantile estimator for possible
   under-estimation, one may
   want to adjust the estimated CDF as
-  \deqn{\hat{F}_k(x) + \mbox{adj\_factor}.}{
-      Fhat_k(x) + adj_factor.}
+  \deqn{\hat{F}_k(x) + \mbox{adj\_val}.}{
+      Fhat_k(x) + adj_val.}
   and use the adjusted CDF to estimate quantiles. To make an upper
-  quantile estimator larger, adj_factor should be a negative
+  quantile estimator larger, the adj_val should have a positive
   value. Similarly, to adjust lower quantile estimates for
-  possible over-estimation, adj_factor should be a positive value.
+  possible over-estimation, the adj_val should have a negative value.
 
-  The \code{\link{quantileDRM}} function, by default, does not
-  adjust CDF estimators (adjust=FALSE). When adjust=TRUE, the
-  default adj_factor is set to
-  \eqn{-1/(2n_{total})}{-1/(2*n_total)}, where
-  \eqn{n_{total}}{n_total} is the total sample size.
+  The \code{\link{quantileDRM}} function, by default, does
+  not adjust CDF estimators (\code{adjust=FALSE}). When
+  \code{adjust=TRUE}, the default adj_val is set to
+  \eqn{-1/(2n_{k}[i])}{-1/2*n_k[i]}, where
+  \eqn{n_{k}[i]}{n_k[i]} is the size of the
+  k\eqn{\textsuperscript{th}}{^th} sample sample, for each
+  \eqn{i}{i}, to adjust the EL quantile estimator for lower
+  quantile estimation.
 }
 \references{
   J. Chen and Y. Liu (2013),
   Quantile and quantile-function estimations under density ratio
   model.
-  To appear in \emph{The Annals of Statistics}, 2013.
+  \emph{The Annals of Statistics}, 41(3):1669-1692.
 }
 \examples{
 # Data generation

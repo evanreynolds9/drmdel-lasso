@@ -1,11 +1,12 @@
 # ##############################
 # This software is written by Song Cai and published under GPLv3.
 #
-# Version 1.1, September 23, 2013.
+# Version 1.3, Aprile 08, 2014.
 # ##############################
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {
-# Calculate negative log dual-likelihood for a given value of parameter.
+# Calculate negative log dual empirical likelihood for a
+# given value of parameter.
 #
 # logDualLWrapper prototype:
 # void logDualLWrapper( double * restrict n_total, /*inputs*/
@@ -18,7 +19,7 @@ negLDL <- function(par, x, n_total, n_samples, m, model, d) {
   logDL <- .C("logDualLWrapper", as.double(n_total),
               as.double(n_samples), as.double(m), as.double(d),
               as.double(par), as.double(model), as.double(x),
-              ldl_val=double(1), DUP=FALSE)
+              ldl_val=double(1))
 
   return(-logDL$ldl_val)
 
@@ -26,7 +27,8 @@ negLDL <- function(par, x, n_total, n_samples, m, model, d) {
 
 # User specified basis function version
 negLDLUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
-# Calculate negative log dual-likelihood for a given value of parameter.
+# Calculate negative log dual empirical likelihood for a
+# given value of parameter.
 #
 # basis_func must be a function.
 #
@@ -45,7 +47,8 @@ negLDLUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
 
 
 negLDLGr <- function(par, x, n_total, n_samples, m, model, d) {
-# Calculate the gradient of the negative log dual-likelihood for a given value of parameter.
+# Calculate the gradient of the negative log dual empirical
+# likelihood for a given value of parameter.
 #
 # logDualLDLGrWrapper prototype:
 # void logDualLGrWrapper( double * restrict n_total, /*inputs*/
@@ -59,7 +62,7 @@ negLDLGr <- function(par, x, n_total, n_samples, m, model, d) {
   logDLGr <- .C("logDualLGrWrapper", as.double(n_total),
               as.double(n_samples), as.double(m), as.double(d),
               as.double(par), as.double(model), as.double(x),
-              ldl_gr=double(m*(d+1)), DUP=FALSE)
+              ldl_gr=double(m*(d+1)))
 
   return(-logDLGr$ldl_gr)
 
@@ -67,7 +70,8 @@ negLDLGr <- function(par, x, n_total, n_samples, m, model, d) {
 
 # User specified basis function version
 negLDLGrUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
-# Calculate the gradient of the negative log dual-likelihood for a given value of parameter.
+# Calculate the gradient of the negative log dual empirical
+# likelihood for a given value of parameter.
 #
 # basis_func must be a function.
 #
@@ -83,10 +87,69 @@ negLDLGrUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
 
 }
 
-negLDL_null <- function(par_null, g_null, g_null_gr=NULL, x, n_total,
-                        n_samples, m, model, d) {
+gen_par_pos <- function(m, d){
 
-  par <- g_null(par_null)
+  par_pos_alpha <- seq(from=1, by=(d+1), length.out=m) 
+  par_pos_beta <- 1:(m*d) + rep(1:m, each=d)
+
+  return(list(alpha=par_pos_alpha, beta=par_pos_beta))
+
+}
+
+#g_null_jac_full <- function(g_null_jac, par_null, par_alpha,
+                            #par_dim, par_dim_null, par_pos) {
+## par_dim is the dimension of DRM parameter $theta$, which
+##   equals m*(d+1).
+## par_dim_null is the dimension of the null mapping, i.e.
+##   dim(gamma).
+##
+## Jacobian matrix for g_null_full (null mapping from (alpha,
+## gammma) to (theta_1, theta_2, ..., theta_m))
+
+  #par_dim_null_full <- m + par_dim_null
+  #g_null_full_jac <- matrix(rep(0, par_dim*par_dim_null_full),
+                                #nrow=par_dim,
+                                #ncol=par_dim_null_full)
+
+  ##par_gamma <- par_null_full[-(1:m)]  # get gamma
+  #g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_null_full[-(1:m)])
+  #g_null_full_jac[par_pos$alpha, 1:m] <- diag(m) 
+
+  #return(g_null_full_jac)
+#}
+
+#g_null_full <- function(g_null, par_null, par_alpha,
+                        #par_dim, par_pos) {
+
+  #par <- numeric(par_dim)
+
+  #par_beta <- g_null(par_null)
+
+  #par[par_pos$alpha] <- par_alpha
+  #par[par_pos$beta] <- par_beta
+
+  #return(par)
+
+#}
+
+negLDL_null <- function(par_null_full, g_null, g_null_jac=NULL,
+                        par_pos, par_dim, par_dim_null=NULL,
+                        x, n_total, n_samples, m, model, d) {
+# g_null is a null mapping from gamma to beta, but
+# par_null_full must be the full null parameter that
+# includes alpha, i.e. par_null_full=(alpha, gamma).
+#   alpha: the first m elements of par_null_full
+#   gamma: the rest (from (m+1)th to the last) elements of
+#     par_null_full
+#
+# par_dim is the dimension of DRM parameter $theta$, which
+#   equals m*(d+1).
+# par_dim_null is the dimension of the null mapping, i.e.
+#   dim(gamma).
+
+  par <- numeric(par_dim)
+  par[par_pos$alpha] <- par_null_full[1:m]  # get alpha
+  par[par_pos$beta] <- g_null(par_null_full[-(1:m)])  # get beta
 
   return(negLDL(par=par, x=x, n_total=n_total, n_samples=n_samples, m=m,
          model=model, d=d))
@@ -94,49 +157,112 @@ negLDL_null <- function(par_null, g_null, g_null_gr=NULL, x, n_total,
 }
 
 # User specified basis function version
-negLDLUf_null <- function(par_null, g_null, g_null_gr=NULL, x, n_total,
-                          n_samples, m, basis_func, d) {
+negLDLUf_null <- function(par_null_full, g_null, g_null_jac=NULL,
+                          par_pos, par_dim, par_dim_null=NULL,
+                          x, n_total, n_samples, m, basis_func, d) {
 # basis_func must be a function.
+#
+# g_null is a null mapping from gamma to beta, but
+# par_null_full must be the full null parameter that
+# includes alpha, i.e. par_null_full=(alpha, gamma).
+#   alpha: the first m elements of par_null_full
+#   gamma: the rest (from (m+1)th to the last) elements of
+#     par_null_full
+#
+# par_dim is the dimension of DRM parameter $theta$, which
+#   equals m*(d+1).
+# par_dim_null is the dimension of the null mapping, i.e.
+#   dim(gamma).
 
-  par <- g_null(par_null)
+  par <- numeric(par_dim)
+  par[par_pos$alpha] <- par_null_full[1:m]  # get alpha
+  par[par_pos$beta] <- g_null(par_null_full[-(1:m)])  # get beta
 
   return(negLDLUf(par=par, x=x, n_total=n_total, n_samples=n_samples, m=m,
          basis_func=basis_func, d=d))
 
 }
 
-negLDLGr_null <- function(par_null, g_null, g_null_gr, x, n_total, n_samples,
-                          m, model, d) {
+negLDLGr_null <- function(par_null_full, g_null, g_null_jac,
+                          par_pos, par_dim, par_dim_null,
+                          x, n_total, n_samples, m, model, d) {
+# par_null_full must be the full null parameter that
+# includes alpha, i.e. par_null_full=(alpha, gamma).
+#
+# g_null is a null mapping from gamma to beta.
+# g_null_jac is the jacobian matrix of g_null, i.e. a matrix
+#   of dimension m*d by dim(gamma).
+#
+# par_dim is the dimension of DRM parameter $theta$, which
+#   equals m*(d+1).
+# par_dim_null is the dimension of the null mapping, i.e.
+#   dim(gamma).
 
-  # g_null_gr must return a matrix of dimension m*(d+1) by dim(par_null)
-
-  par <- g_null(par_null)
+  par <- numeric(par_dim)
+  par[par_pos$alpha] <- par_null_full[1:m]  # get alpha
+  par_gamma <- par_null_full[-(1:m)]  # get gamma
+  par[par_pos$beta] <- g_null(par_gamma)
 
   par_full_gr <- negLDLGr(par=par, x=x, n_total=n_total, n_samples=n_samples,
                           m=m, model=model, d=d)
 
-  return(as.numeric(t(g_null_gr(par_null)) %*% par_full_gr))
+  # Jacobian matrix for g_null_full (null mapping from (alpha,
+  # gammma) to (theta_1, theta_2, ..., theta_m))
+  par_dim_null_full <- m + par_dim_null
+  g_null_full_jac <- matrix(rep(0, par_dim*par_dim_null_full),
+                                nrow=par_dim,
+                                ncol=par_dim_null_full)
+
+  g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_gamma)
+  g_null_full_jac[par_pos$alpha, 1:m] <- diag(m) 
+
+  return(as.numeric(t(g_null_full_jac) %*% par_full_gr))
 
 }
 
 # User specified basis function version
-negLDLGrUf_null <- function(par_null, g_null, g_null_gr, x, n_total, n_samples,
-                          m, basis_func, d) {
+negLDLGrUf_null <- function(par_null_full, g_null, g_null_jac, 
+                            par_pos, par_dim, par_dim_null,
+                            x, n_total, n_samples, m, basis_func, d) {
 # basis_func must be a function.
 #
-# g_null_gr must return a matrix of dimension m*(d+1) by dim(par_null)
+# par_null_full must be the full null parameter that
+# includes alpha, i.e. par_null_full=(alpha, gamma).
+#
+# g_null is a null mapping from gamma to beta.
+# g_null_jac is the jacobian matrix of g_null, i.e. a matrix
+#   of dimension m*d by dim(gamma).
+#
+# par_dim is the dimension of DRM parameter $theta$, which
+#   equals m*(d+1).
+# par_dim_null is the dimension of the null mapping, i.e.
+#   dim(gamma).
 
-  par <- g_null(par_null)
+  par <- numeric(par_dim)
+  par[par_pos$alpha] <- par_null_full[1:m]  # get alpha
+  par_gamma <- par_null_full[-(1:m)]  # get gamma
+  par[par_pos$beta] <- g_null(par_gamma)
 
   par_full_gr <- negLDLGrUf(par=par, x=x, n_total=n_total, n_samples=n_samples,
-                          m=m, basis_func=basis_func, d=d)
+                            m=m, basis_func=basis_func, d=d)
 
-  return(as.numeric(t(g_null_gr(par_null)) %*% par_full_gr))
+  # Jacobian matrix for g_null_full (null mapping from (alpha,
+  # gammma) to (theta_1, theta_2, ..., theta_m))
+  par_dim_null_full <- m + par_dim_null
+  g_null_full_jac <- matrix(rep(0, par_dim*par_dim_null_full),
+                                nrow=par_dim,
+                                ncol=par_dim_null_full)
+
+  g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_gamma)
+  g_null_full_jac[par_pos$alpha, 1:m] <- diag(m) 
+
+  return(as.numeric(t(g_null_full_jac) %*% par_full_gr))
 
 }
 
 negLDLHessian <- function(par, x, n_total, n_samples, m, model, d) {
-# Calculate the hessian of the negative log dual-likelihood for a given value of parameter.
+# Calculate the hessian of the negative log dual empirical
+# likelihood for a given value of parameter.
 #
 # logDualLDLHessianWrapper prototype:
 # void logDualLHessianWrapper( double * restrict n_total, /*inputs*/
@@ -150,7 +276,7 @@ negLDLHessian <- function(par, x, n_total, n_samples, m, model, d) {
   logDLHessian <- .C("logDualLHessianWrapper", as.double(n_total),
               as.double(n_samples), as.double(m), as.double(d),
               as.double(par), as.double(model), as.double(x),
-              ldl_hessian=double(m*(d+1)*m*(d+1)), DUP=FALSE)
+              ldl_hessian=double(m*(d+1)*m*(d+1)))
 
   return( matrix(-(logDLHessian$ldl_hessian), m*(d+1), m*(d+1),
                  byrow=TRUE) )
@@ -159,7 +285,8 @@ negLDLHessian <- function(par, x, n_total, n_samples, m, model, d) {
 
 # User specified basis function version
 negLDLHessianUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
-# Calculate the hessian of the negative log dual-likelihood for a given value of parameter.
+# Calculate the hessian of the negative log dual empirical
+# likelihood for a given value of parameter.
 #
 # basis_func must be a function.
 #
@@ -177,7 +304,7 @@ negLDLHessianUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
 
 Wmat <- function(n_total, n_samples, m, d) {
 # Calculate the W matrix needed for calculating a consistently estimated
-# asymptotic variance of the MDELE of parameters in DRM.
+# asymptotic variance of the MELE of parameters in DRM.
 #
 # WmatWrapper prototype:
 # void WmatWrapper(double * restrict n_total, /*inputs*/
@@ -188,14 +315,14 @@ Wmat <- function(n_total, n_samples, m, d) {
 
   Wmat <- .C("WmatWrapper", as.double(n_total),
              as.double(n_samples), as.double(m), as.double(d),
-             W=double(m*(d+1)*m*(d+1)), DUP=FALSE)
+             W=double(m*(d+1)*m*(d+1)))
 
   return( matrix(Wmat$W, m*(d+1), m*(d+1), byrow=TRUE) )
 
 }
 
-mdeleVarHat1 <- function(mdele, x, n_total, n_samples, m, model, d, W) {
-# Calculate an consistently estimated asymptotic variance of the MDELE of
+meleVarHat1 <- function(mele, x, n_total, n_samples, m, model, d, W) {
+# Calculate an consistently estimated asymptotic variance of the MELE of
 # parameters in DRM.
 #
 # W -- the matrix obtained using the Wmat function.
@@ -212,8 +339,8 @@ mdeleVarHat1 <- function(mdele, x, n_total, n_samples, m, model, d, W) {
 
   logDLHessianMdele <- .C("logDualLHessianWrapper", as.double(n_total),
               as.double(n_samples), as.double(m), as.double(d),
-              as.double(mdele), as.double(model), as.double(x),
-              ldl_hessian=double(hessianDim*hessianDim), DUP=FALSE)
+              as.double(mele), as.double(model), as.double(x),
+              ldl_hessian=double(hessianDim*hessianDim))
 
   U <- matrix(-(logDLHessianMdele$ldl_hessian)/n_total, hessianDim, hessianDim,
               byrow=TRUE)
@@ -223,8 +350,8 @@ mdeleVarHat1 <- function(mdele, x, n_total, n_samples, m, model, d, W) {
 }
 
 # User specified basis function version
-mdeleVarHatUf1 <- function(mdele, x, n_total, n_samples, m, basis_func, d, W) {
-# Calculate an consistently estimated asymptotic variance of the MDELE of
+meleVarHatUf1 <- function(mele, x, n_total, n_samples, m, basis_func, d, W) {
+# Calculate an consistently estimated asymptotic variance of the MELE of
 # parameters in DRM.
 #
 # W -- the matrix obtained using the Wmat function.
@@ -237,7 +364,7 @@ mdeleVarHatUf1 <- function(mdele, x, n_total, n_samples, m, basis_func, d, W) {
 
   ldl_hessian <- .Call("logDualLHessianUfWrapper", as.double(n_total),
                        as.double(n_samples), as.double(m), as.double(d),
-                       as.double(mdele), basis_func, new.env(), as.double(x))
+                       as.double(mele), basis_func, new.env(), as.double(x))
 
   U <- -ldl_hessian/n_total
 
@@ -245,8 +372,8 @@ mdeleVarHatUf1 <- function(mdele, x, n_total, n_samples, m, basis_func, d, W) {
 
 }
 
-mdeleVarHat <- function(mdele, x, n_total, n_samples, m, model, d) {
-# Calculate an consistently estimated asymptotic variance of the MDELE of
+meleVarHat <- function(mele, x, n_total, n_samples, m, model, d) {
+# Calculate an consistently estimated asymptotic variance of the MELE of
 # parameters in DRM.
 #
 # WmatWrapper prototype:
@@ -266,7 +393,7 @@ mdeleVarHat <- function(mdele, x, n_total, n_samples, m, model, d) {
   # Calculating W matrix
   Wmat <- .C("WmatWrapper", as.double(n_total),
              as.double(n_samples), as.double(m), as.double(d),
-             W=double(m*(d+1)*m*(d+1)), DUP=FALSE)
+             W=double(m*(d+1)*m*(d+1)))
 
   W <- matrix(Wmat$W, m*(d+1), m*(d+1), byrow=TRUE)
 
@@ -275,21 +402,21 @@ mdeleVarHat <- function(mdele, x, n_total, n_samples, m, model, d) {
 
   logDLHessianMdele <- .C("logDualLHessianWrapper", as.double(n_total),
               as.double(n_samples), as.double(m), as.double(d),
-              as.double(mdele), as.double(model), as.double(x),
-              ldl_hessian=double(hessianDim*hessianDim), DUP=FALSE)
+              as.double(mele), as.double(model), as.double(x),
+              ldl_hessian=double(hessianDim*hessianDim))
 
   # Observed information matrix
   U <- matrix(-(logDLHessianMdele$ldl_hessian)/n_total, hessianDim, hessianDim,
               byrow=TRUE)
 
-  # Estimated asymptotic variance of the MDELE
+  # Estimated asymptotic variance of the MELE
   return( solve(U) - W )
 
 }
 
 # User specified basis function version
-mdeleVarHatUf <- function(mdele, x, n_total, n_samples, m, basis_func, d) {
-# Calculate an consistently estimated asymptotic variance of the MDELE of
+meleVarHatUf <- function(mele, x, n_total, n_samples, m, basis_func, d) {
+# Calculate an consistently estimated asymptotic variance of the MELE of
 # parameters in DRM.
 #
 # WmatWrapper prototype:
@@ -307,26 +434,26 @@ mdeleVarHatUf <- function(mdele, x, n_total, n_samples, m, basis_func, d) {
   # Calculating W matrix
   Wmat <- .C("WmatWrapper", as.double(n_total),
              as.double(n_samples), as.double(m), as.double(d),
-             W=double(m*(d+1)*m*(d+1)), DUP=FALSE)
+             W=double(m*(d+1)*m*(d+1)))
 
   W <- matrix(Wmat$W, m*(d+1), m*(d+1), byrow=TRUE)
 
   # Calculate the Hessian of logDL
   ldl_hessian <- .Call("logDualLHessianUfWrapper", as.double(n_total),
                        as.double(n_samples), as.double(m), as.double(d),
-                       as.double(mdele), basis_func, new.env(), as.double(x))
+                       as.double(mele), basis_func, new.env(), as.double(x))
 
   # Observed information matrix
   U <- -ldl_hessian/n_total
   #U <- matrix(-ldl_hessian/n_total, m*(d+1), m*(d+1), byrow=TRUE)
 
-  # Estimated asymptotic variance of the MDELE
+  # Estimated asymptotic variance of the MELE
   return( solve(U) - W )
 
 }
 
-pEst <- function(x, n_total, n_samples, m, model, d, mdele) {
-# Extract estimated probabilities given MDELE
+pEst <- function(x, n_total, n_samples, m, model, d, mele) {
+# Extract estimated probabilities given MELE
 #
 # probEstWrapper prototype:
 # void probEstWrapper( double * restrict n_total, /*inputs*/
@@ -342,7 +469,7 @@ pEst <- function(x, n_total, n_samples, m, model, d, mdele) {
 
   pEstimates <- .C("probEstWrapper", as.double(n_total),
                       as.double(n_samples), as.double(m), as.double(d),
-                      as.double(mdele), as.double(model), as.double(x),
+                      as.double(mele), as.double(model), as.double(x),
                       1.0,
                       p_est=double((m+1)*n_total))
 
@@ -353,8 +480,8 @@ pEst <- function(x, n_total, n_samples, m, model, d, mdele) {
 }
 
 # User specified basis function version
-pEstUf <- function(x, n_total, n_samples, m, basis_func, d, mdele) {
-# Extract estimated probabilities given MDELE
+pEstUf <- function(x, n_total, n_samples, m, basis_func, d, mele) {
+# Extract estimated probabilities given MELE
 #
 # basis_func must be a function.
 #
@@ -367,7 +494,7 @@ pEstUf <- function(x, n_total, n_samples, m, basis_func, d, mdele) {
 
   p_est <- .Call("probEstUfWrapper", as.double(n_total),
                     as.double(n_samples), as.double(m), as.double(d),
-                    as.double(mdele), basis_func, new.env(), as.double(x),
+                    as.double(mele), basis_func, new.env(), as.double(x),
                     1.0)
 
   population_indicator <- rep(x=seq(0, m, by=1), times=rep(n_total, m+1))
@@ -376,8 +503,8 @@ pEstUf <- function(x, n_total, n_samples, m, basis_func, d, mdele) {
 
 }
 
-pBlEst <- function(x, n_total, n_samples, m, model, d, mdele) {
-# Extract estimated probabilities given MDELE
+pBlEst <- function(x, n_total, n_samples, m, model, d, mele) {
+# Extract estimated probabilities given MELE
 #
 # probBlEstWrapper prototype:
 # void probBlEstWrapper( double * restrict n_total, /*inputs*/
@@ -394,7 +521,7 @@ pBlEst <- function(x, n_total, n_samples, m, model, d, mdele) {
 
   pBlEstimates <- .C("probBlEstWrapper", as.double(n_total),
                       as.double(n_samples), as.double(m), as.double(d),
-                      as.double(mdele), as.double(model), as.double(x),
+                      as.double(mele), as.double(model), as.double(x),
                       1.0,
                       p_bl_est=double(n_total))
 
@@ -403,8 +530,8 @@ pBlEst <- function(x, n_total, n_samples, m, model, d, mdele) {
 }
 
 # User specified basis function version
-pBlEstUf <- function(x, n_total, n_samples, m, basis_func, d, mdele) {
-# Extract estimated probabilities given MDELE
+pBlEstUf <- function(x, n_total, n_samples, m, basis_func, d, mele) {
+# Extract estimated probabilities given MELE
 #
 # basis_func must be a function.
 #
@@ -417,7 +544,7 @@ pBlEstUf <- function(x, n_total, n_samples, m, basis_func, d, mdele) {
 
   p_bl_est <- .Call("probBlEstUfWrapper", as.double(n_total),
                        as.double(n_samples), as.double(m), as.double(d),
-                       as.double(mdele), basis_func, new.env(), as.double(x),
+                       as.double(mele), basis_func, new.env(), as.double(x),
                        1.0)
 
   return(data.frame(x=x, p_est=p_bl_est))
@@ -447,8 +574,9 @@ cdfEst <- function(x, n_samples, p_est) {
 
 }
 
-quantEst <- function(k, p, cdf_est, interpolation=TRUE, adjust=FALSE,
-                     adj_factor=NULL) {
+quantEst <- function(k, p, cdf_est, n_samples,
+                     interpolation=TRUE, adj=FALSE,
+                     adj_val=NULL) {
 # Estimate the quantile of the k[i]^th, k[i] = 0, 1, ..., m, population at
 #   probability p[i] without giving covariance estimates.
 
@@ -464,25 +592,38 @@ quantEst <- function(k, p, cdf_est, interpolation=TRUE, adjust=FALSE,
     stop("The argument 'interpolation' must be a logical variable (either TRUE or FALSE)!")
   }
 
-  if (!is.logical(adjust)) {
-    stop("The argument 'adjust' must be a logical variable (either TRUE or FALSE)!")
+  if (!is.logical(adj)) {
+    stop("The argument 'adj' must be a logical variable (either TRUE or FALSE)!")
   }
 
-  if (!is.null(adj_factor) &&
-      (!is.numeric(adj_factor) || length(adj_factor > 1))) {
-    stop("The argument 'adj_factor' must either be NULL or a single numerical value (length one)!")
+  if (adj==TRUE) {
+
+    if (is.null(adj_val)) {
+
+      adj_val <- -1/(2*n_samples[(k+1)])
+
+    } else {
+
+      if (!is.numeric(adj_val)) {
+        stop("The argument 'adj_val' must either be NULL or a numerical value vector!")
+      } else if (length(adj_val) != 1 && length(adj_val) != nK) {
+        stop("The length of the numerical argument 'adj_val' must either be 1 or the same as the length of the argument 'k' or, when the length of 'k' is 1, the same as the length of the argument 'p')!")
+      }
+
+      if (length(adj_val) == 1) adj_val <- rep(adj_val, nK)
+
+    }
+
   }
 
   # Extract sorted data and useful information about DRM 
   x_sort <- cdf_est[cdf_est$k==0,]$x
-  n_total <- length(x_sort)
 
   qe <- numeric(nK)
   for (i in 1:nK) {
     cdf_est_tmp <- cdf_est[cdf_est$k==k[i], 3]
-    if (adjust==TRUE) {
-      if (is.null(adj_factor)) adj_factor <- -1/(2*n_total)
-      cdf_est_tmp <- cdf_est_tmp + adj_factor
+    if (adj==TRUE) {
+      cdf_est_tmp <- cdf_est_tmp + adj_val[i]
     }
     if (p[i] >= tail(cdf_est_tmp, 1)) {
       pos_tmp <- length(x_sort) - 1
@@ -510,8 +651,7 @@ quantEst <- function(k, p, cdf_est, interpolation=TRUE, adjust=FALSE,
 
 }
 
-bwEst <- function(k, n_total, p_est, cdf_est, interpolation=TRUE,
-                  adjust=FALSE, adj_factor=NULL) {
+bwEst <- function(k, n_samples, p_est, cdf_est, interpolation=TRUE) {
 # Estimate bandwith for density estimation for distribution functions F_k, k = 0, 1, ..., m.
 
   nK <- length(k)
@@ -525,13 +665,15 @@ bwEst <- function(k, n_total, p_est, cdf_est, interpolation=TRUE,
     sd_est[i] <- sqrt( sum(x^2 * pe_tmp) - mu_tmp^2 )
   }
 
-  q_est <- quantEst(k=c(k, k), p=c(rep(0.25, nK), rep(0.75, nK)), cdf_est,
-                    interpolation=interpolation, adjust=adjust,
-                    adj_factor=adj_factor)
+  q_est <- quantEst(k=c(k, k), 
+                    p=c(rep(0.25, nK), rep(0.75, nK)),
+                    cdf_est, n_samples,
+                    interpolation=interpolation,
+                    adj=FALSE, adj_val=NULL)
   iqr <- q_est[(nK+1):(2*nK)] - q_est[1:nK]
 
   bw <- numeric(nK)
-  const <- 1.06 / (n_total^{1/5})
+  const <- 1.06 / ( (sum(n_samples))^(1/5) )
   for (i in 1:nK) {
     bw[i] <- const * min(sd_est[i], iqr[i]/1.34) 
   }
@@ -546,8 +688,7 @@ bwEst <- function(k, n_total, p_est, cdf_est, interpolation=TRUE,
   return(bw)
 }
 
-summaryDRMFEst <- function(n_samples, p_est, cdf_est, interpolation=TRUE,
-                           adjust=FALSE, adj_factor=NULL, bw=FALSE) {
+summaryDRMFEst <- function(n_samples, p_est, cdf_est, interpolation=TRUE) {
 # Estimated mean, variance, IQR, of distribution functions F_k's, k = 0, 1, ..., m.
 
   m <- length(n_samples) - 1
@@ -565,29 +706,17 @@ summaryDRMFEst <- function(n_samples, p_est, cdf_est, interpolation=TRUE,
   sd_est <- sqrt(var_est)
 
   k <- 0:m
-  q1 <- quantEst(k, 0.25, cdf_est, interpolation=interpolation,
-                    adjust=adjust, adj_factor=adj_factor)
-  q3 <- quantEst(k, 0.75, cdf_est, interpolation=interpolation,
-                    adjust=adjust, adj_factor=adj_factor)
+  q1 <- quantEst(k, 0.25, cdf_est, n_samples,
+                 interpolation=interpolation, adj=FALSE,
+                 adj_val=NULL)
+  q3 <- quantEst(k, 0.75, cdf_est, n_samples,
+                 interpolation=interpolation, adj=FALSE,
+                 adj_val=NULL)
   iqr <- q3 - q1
 
-  if (bw==TRUE) {
 
-    bandwidth <- numeric(m+1)
-    const <- 1.06 / (n_total^{1/5})
-    for (i in 1:(m+1)) {
-      bandwidth[i] <- const * min(sd_est[i], iqr[i]/1.34) 
-    }
-
-    result <- data.frame(mean=mu_est, var=var_est, sd=sd_est, Q1=q1, Q3=q3,
-                          IQR=iqr, bw_default=bandwidth)
-
-  } else {
-
-    result <- data.frame(mean=mu_est, var=var_est, sd=sd_est, Q1=q1, Q3=q3,
-                          IQR=iqr)
-
-  }
+  result <- data.frame(mean=mu_est, var=var_est, sd=sd_est,
+                       Q1=q1, Q3=q3, IQR=iqr)
 
   rnames <- c("F0")
   for (i in 1:m) {
@@ -621,8 +750,8 @@ displayPar <- function(par, m) {
 
 }
 
-drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
-                   g_null_gr=NULL, par_dim_null=NULL, par_init_null=NULL,
+drmdel <- function(x, n_samples, basis_func, g_null=NULL,
+                   g_null_jac=NULL, par_dim_null=NULL,
                    ...)
 {
   # setting useful constants
@@ -652,6 +781,8 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
 
   par_dim <- m*(d+1)
 
+  par_pos <- gen_par_pos(m, d)
+
   # extracting ... arguments for function optim()
   dot_args <- list(...)
   # setting default method as "BFGS" for function optim()
@@ -680,15 +811,11 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
     if (is.null(dot_args$upper)) dot_args <- c(dot_args, list(upper=100))
   }
 
-  # calculating MDELE
+  # calculating MELE
   # About initial values: it is better to always set initial values to zeros
-  # for all parameters to ensure that, at initial values, the dual
-  # log-likelihood is finite!
-  if (is.null(par_init)) {
-    par_init <- rep(0, par_dim)  # 
-  } else if (length(par_init) != par_dim) {
-    stop("Length of 'par_init' incorrect! It must be 'm*(d+1)'!")
-  }
+  # for all parameters to ensure that, at the initial value, the dual
+  # log empirical likelihood is finite!
+  par_init <- rep(0, par_dim)  # 
 
   if (is.function(basis_func)) {
 
@@ -699,7 +826,7 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
                                      n_samples=n_samples, m=m,
                                      basis_func=basis_func,
                                      d=d)))
-    mdele <- drm_opt$par
+    mele <- drm_opt$par
     mnames <- NULL
     for (i in 1:m) {
       mnames <- c(mnames, paste("alpha[", i, "]", sep=""))
@@ -707,14 +834,14 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
         mnames <- c(mnames, paste("beta[", i, ",", j, "]", sep=""))
       }
     }
-    names(mdele) <- mnames
+    names(mele) <- mnames
 
     negldl <- drm_opt$value
 
     # ##### Estimate information matrix #####
     logDLHessianMdele <- .Call("logDualLHessianUfWrapper", as.double(n_total),
                                as.double(n_samples), as.double(m),
-                               as.double(d), as.double(mdele), basis_func,
+                               as.double(d), as.double(mele), basis_func,
                                new.env(), as.double(x))
 
     # Observed information matrix
@@ -726,30 +853,23 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
 
     # estimate dF_{k}(x_kj)
     p_est <- pEstUf(x=x, n_total=n_total, n_samples=n_samples, m=m,
-                    basis_func=basis_func, d=d, mdele=mdele)
+                    basis_func=basis_func, d=d, mele=mele)
 
     # estimate F_{k}(x_kj)
     cdf_est <- cdfEst(x=x, n_samples=n_samples, p_est=p_est)
 
     if (!is.null(g_null)) {
 
-      if (is.null(par_init_null) && is.null(par_dim_null)) {
-        stop("One must provide either 'par_init_null' or 'par_dim_null' or both!")
+      if (is.null(par_dim_null)) {
+        stop("One must provide 'par_dim_null', the dimension of the null parameter!")
       }
 
-      if (is.null(par_init_null)) {
-        par_init_null <- rep(0, par_dim_null)
-      } else if (!is.null(par_dim_null)) {
-        if (length(par_init_null) != par_dim_null) {
-          warnings("Length of 'par_init_null' and 'par_dim_null' are different! 'par_init_null' is used!")
-        }
-      } else {
-        par_dim_null <- length(par_init_null)
-      }
+      par_init_null_full <- rep(0, (m+par_dim_null))
+      par_dim_null_full <- par_dim_null + m
 
       dot_args_null <- dot_args
       # safeguard one-dimensional case
-      if (par_dim_null==1) {
+      if (par_dim_null_full==1) {
         dot_args_null$method="Brent"
         if (is.null(dot_args_null$lower)) {
           dot_args_null <- c(dot_args_null, list(lower=-100))
@@ -759,45 +879,51 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
         }
       }
 
-      if (!is.null(g_null_gr)) {
-        drm_opt_null <- do.call(optim, c(list(par=par_init_null,
+      if (!is.null(g_null_jac)) {
+        drm_opt_null <- do.call(optim, c(list(par=par_init_null_full,
                                               fn=negLDLUf_null,
                                               gr=negLDLGrUf_null),
                                          dot_args_null,
                                          list(g_null=g_null,
-                                              g_null_gr=g_null_gr,
-                                              x=x,
-                                              n_total=n_total,
+                                              g_null_jac=g_null_jac,
+                                              par_pos=par_pos,
+                                              par_dim=par_dim,
+                                              par_dim_null=par_dim_null,
+                                              x=x, n_total=n_total,
                                               n_samples=n_samples, m=m,
                                               basis_func=basis_func, d=d)))
       } else {
-        drm_opt_null <- do.call(optim, c(list(par=par_init_null,
+        drm_opt_null <- do.call(optim, c(list(par=par_init_null_full,
                                               fn=negLDLUf_null),
                                          dot_args_null,
-                                         list(g_null=g_null, x=x,
-                                              n_total=n_total,
+                                         list(g_null=g_null,
+                                              par_pos=par_pos,
+                                              par_dim=par_dim,
+                                              x=x, n_total=n_total,
                                               n_samples=n_samples, m=m,
                                               basis_func=basis_func, d=d)))
       }
+
       negldl_null <- drm_opt_null$value
-      mdele_null <- drm_opt_null$par
-      delr <- -2*(negldl - negldl_null)  # likelihood ratio statistics
-      df <- par_dim - par_dim_null
+      mele_null <- list(alpha=drm_opt_null$par[1:m],
+                        gamma=drm_opt_null$par[-(1:m)])
+      delr <- -2*(negldl - negldl_null)  # DEL ratio statistics
+      df <- par_dim - par_dim_null_full
       p_val <- 1-pchisq(delr, df)
 
-      return(list(drm_info=drm_info, mdele=mdele,
+      return(list(drm_info=drm_info, mele=mele,
                   info_mat=info_mat, negldl=negldl,
-                  mdele_null=mdele_null, negldl_null=negldl_null,
+                  mele_null=mele_null, negldl_null=negldl_null,
                   delr=delr, df=df, p_val=p_val,
                   p_est=p_est, cdf_est=cdf_est))
 
     } else {
 
-      delr <- -2*negldl  # likelihood ratio statistics
-      df <- m*d 
+      delr <- -2*negldl  # DEL ratio statistics
+      df <- m*d
       p_val <- 1-pchisq(delr, df)
 
-      return(list(drm_info=drm_info, mdele=mdele,
+      return(list(drm_info=drm_info, mele=mele,
                   info_mat=info_mat, negldl=negldl,
                   delr=delr, df=df, p_val=p_val,
                   p_est=p_est, cdf_est=cdf_est))
@@ -812,7 +938,7 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
                                      n_samples=n_samples, m=m,
                                      model=basis_func,
                                      d=d)))
-    mdele <- drm_opt$par
+    mele <- drm_opt$par
     mnames <- NULL
     for (i in 1:m) {
       mnames <- c(mnames, paste("alpha[", i, "]", sep=""))
@@ -820,15 +946,15 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
         mnames <- c(mnames, paste("beta[", i, ",", j, "]", sep=""))
       }
     }
-    names(mdele) <- mnames
+    names(mele) <- mnames
 
     negldl <- drm_opt$value
 
     # ##### Estimate information matrix #####
     logDLHessianMdele <- .C("logDualLHessianWrapper", as.double(n_total),
                 as.double(n_samples), as.double(m), as.double(d),
-                as.double(mdele), as.double(basis_func), as.double(x),
-                ldl_hessian=double(par_dim*par_dim), DUP=FALSE)
+                as.double(mele), as.double(basis_func), as.double(x),
+                ldl_hessian=double(par_dim*par_dim))
 
     # Observed information matrix
     info_mat <- matrix(-(logDLHessianMdele$ldl_hessian)/n_total, par_dim,
@@ -839,30 +965,23 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
 
     # estimate dF_{k}(x_kj)
     p_est <- pEst(x=x, n_total=n_total, n_samples=n_samples, m=m,
-                  model=basis_func, d=d, mdele=mdele)
+                  model=basis_func, d=d, mele=mele)
 
     # estimate F_{k}(x_kj)
     cdf_est <- cdfEst(x=x, n_samples=n_samples, p_est=p_est)
 
     if (!is.null(g_null)) {
 
-      if (is.null(par_init_null) && is.null(par_dim_null)) {
-        stop("One must provide either 'par_init_null' or 'par_dim_null' or both!")
+      if (is.null(par_dim_null)) {
+        stop("One must provide 'par_dim_null', the dimension of the null parameter!")
       }
 
-      if (is.null(par_init_null)) {
-        par_init_null <- rep(0, par_dim_null)
-      } else if (!is.null(par_dim_null)) {
-        if (length(par_init_null) != par_dim_null) {
-          warnings("Length of 'par_init_null' and 'par_dim_null' are different! 'par_init_null' is used!")
-        }
-      } else {
-        par_dim_null <- length(par_init_null)
-      }
+      par_init_null_full <- rep(0, (m+par_dim_null))
+      par_dim_null_full <- par_dim_null + m
 
       dot_args_null <- dot_args
       # safeguard one-dimensional case
-      if (par_dim_null==1) {
+      if (par_dim_null_full==1) {
         dot_args_null$method="Brent"
         if (is.null(dot_args_null$lower)) {
           dot_args_null <- c(dot_args_null, list(lower=-100))
@@ -872,45 +991,51 @@ drmdel <- function(x, n_samples, basis_func, par_init=NULL, g_null=NULL,
         }
       }
 
-      if (!is.null(g_null_gr)) {
-        drm_opt_null <- do.call(optim, c(list(par=par_init_null,
+      if (!is.null(g_null_jac)) {
+        drm_opt_null <- do.call(optim, c(list(par=par_init_null_full,
                                               fn=negLDL_null,
                                               gr=negLDLGr_null),
                                          dot_args_null,
                                          list(g_null=g_null,
-                                              g_null_gr=g_null_gr,
-                                              x=x,
-                                              n_total=n_total,
+                                              g_null_jac=g_null_jac,
+                                              par_pos=par_pos,
+                                              par_dim=par_dim,
+                                              par_dim_null=par_dim_null,
+                                              x=x, n_total=n_total,
                                               n_samples=n_samples, m=m,
                                               model=basis_func, d=d)))
       } else {
-        drm_opt_null <- do.call(optim, c(list(par=par_init_null,
+        drm_opt_null <- do.call(optim, c(list(par=par_init_null_full,
                                               fn=negLDL_null),
                                          dot_args_null,
-                                         list(g_null=g_null, x=x,
-                                              n_total=n_total,
+                                         list(g_null=g_null,
+                                              par_pos=par_pos,
+                                              par_dim=par_dim,
+                                              x=x, n_total=n_total,
                                               n_samples=n_samples, m=m,
                                               model=basis_func, d=d)))
       }
+
       negldl_null <- drm_opt_null$value
-      mdele_null <- drm_opt_null$par
-      delr <- -2*(negldl - negldl_null)  # likelihood ratio statistics
-      df <- par_dim - par_dim_null
+      mele_null <- list(alpha=drm_opt_null$par[1:m],
+                        gamma=drm_opt_null$par[-(1:m)])
+      delr <- -2*(negldl - negldl_null)  # DEL ratio statistics
+      df <- par_dim - par_dim_null_full
       p_val <- 1-pchisq(delr, df)
 
-      return(list(drm_info=drm_info, mdele=mdele,
+      return(list(drm_info=drm_info, mele=mele,
                   info_mat=info_mat, negldl=negldl,
-                  mdele_null=mdele_null, negldl_null=negldl_null,
+                  mele_null=mele_null, negldl_null=negldl_null,
                   delr=delr, df=df, p_val=p_val,
                   p_est=p_est, cdf_est=cdf_est))
 
     } else {
 
-      delr <- -2*negldl  # likelihood ratio statistics
-      df <- m*d 
+      delr <- -2*negldl  # DEL ratio statistics
+      df <- m*d
       p_val <- 1-pchisq(delr, df)
 
-      return(list(drm_info=drm_info, mdele=mdele,
+      return(list(drm_info=drm_info, mele=mele,
                   info_mat=info_mat, negldl=negldl,
                   delr=delr, df=df, p_val=p_val,
                   p_est=p_est, cdf_est=cdf_est))
@@ -932,43 +1057,42 @@ summaryDRM <- function(drmfit)
   } else {
     cat(space3, "Basis function:", drmfit$drm_info$basis_func, "\n")
   }
-  cat(space3, "Dimension of the baisi function (d):", drmfit$drm_info$d, "\n")
+  cat(space3, "Dimension of the basis function (d):", drmfit$drm_info$d, "\n")
   cat(space3, "Sample sizes:", drmfit$drm_inf$n_samples, "\n")
   cat(space3, "Sample proportions (rho):",
       format(drmfit$drm_inf$rho, digits=3), "\n")
 
   cat("\n")
-  mdele_display <- displayPar(drmfit$mdele, drmfit$drm_info$m)
-  cat("Maximum dual-empirical-likelihood estimator (MDELE):\n")
-  print(format(mdele_display, digits=3))
+  mele_display <- displayPar(drmfit$mele, drmfit$drm_info$m)
+  cat("Maximum empirical likelihood estimator (MELE):\n")
+  print(format(mele_display, digits=3))
 
   cat("\n")
-  if (is.null(drmfit$mdele_null)) {
+  if (is.null(drmfit$mele_null)) {
     cat("Default hypothesis testing problem:\n")
-    cat(space3, "H0: All distribution functions, F_k's, are equal.\n")
-    cat(space3, "H1: One of the distribution functions is different from the others.\n")
+    cat(space3, "H_0: All distribution functions, F_k's, are equal.\n")
+    cat(space3, "H_1: One of the distribution functions is different from the others.\n")
   }
-  cat("Dual-empirical-likelihood ratio statistc (DELR):",
+  cat("Dual empirical likelihood ratio statistc (DELR):",
       format(drmfit$delr, nsmall=3), "\n")
   cat("Degree of freedom:", drmfit$df, "\n")
   cat("p-value:", format(drmfit$p_val, digits=3), "\n")
 
   cat("\n")
   summaryStatF <- summaryDRMFEst(drmfit$drm_info$n_samples, drmfit$p_est,
-                                 drmfit$cdf_est, interpolation=TRUE,
-                                 adjust=FALSE, adj_factor=NULL, bw=FALSE)
+                                 drmfit$cdf_est, interpolation=TRUE)
   cat("Summary statistics of the estimated F_k's (mean, var -- variance, sd -- standard deviation, Q1 -- first quartile, Q3 -- third quartile, IQR -- inter-quartile range):\n")
   print(format(summaryStatF, digits=3))
 
 }
 
-mdeleCov <- function(drmfit)
+meleCov <- function(drmfit)
 {
 
   Wmat <- .C("WmatWrapper", as.double(drmfit$drm_info$n_total),
              as.double(drmfit$drm_info$n_samples),
              as.double(drmfit$drm_info$m), as.double(drmfit$drm_info$d),
-             W=double((drmfit$drm_info$m*(drmfit$drm_info$d+1))^2), DUP=FALSE)
+             W=double((drmfit$drm_info$m*(drmfit$drm_info$d+1))^2))
 
   W <- matrix(Wmat$W, drmfit$drm_info$m*(drmfit$drm_info$d+1),
               drmfit$drm_info$m*(drmfit$drm_info$d+1), byrow=TRUE)
@@ -977,8 +1101,7 @@ mdeleCov <- function(drmfit)
 
 }
 
-densityDRM <- function(k, drmfit, interpolation=TRUE, adjust=FALSE,
-                       adj_factor=NULL, ...)
+densityDRM <- function(k, drmfit, interpolation=TRUE, ...)
 {
   # Arguments handling and checking
   if (!is.numeric(k) || length(k) != 1) {
@@ -999,16 +1122,16 @@ densityDRM <- function(k, drmfit, interpolation=TRUE, adjust=FALSE,
   dot_args$weights <- drmfit$p_est[drmfit$p_est$k==k,3]
 
   if (is.null(dot_args$bw)) {
-    dot_args$bw <- bwEst(k, drmfit$drm_info$n_total, drmfit$p_est,
-                         drmfit$cdf_est, interpolation=interpolation,
-                         adjust=adjust, adj_factor=adj_factor)
+    dot_args$bw <- bwEst(k, drmfit$drm_info$n_samples,
+                         drmfit$p_est, drmfit$cdf_est,
+                         interpolation=interpolation)
   }
 
   return(do.call(density, dot_args))
 
 }
 
-cdfDRM <- function(k, q=NULL, drmfit, interpolation=TRUE)
+cdfDRM <- function(k, x=NULL, drmfit, interpolation=TRUE)
 {
   # Arguments handling and checking
   nK <- length(k)
@@ -1019,28 +1142,28 @@ cdfDRM <- function(k, q=NULL, drmfit, interpolation=TRUE)
 
   # CDF estimation
   cdf_est <- list(nK)
-  if (is.null(q)) {
+  if (is.null(x)) {
 
     for (i in 1:nK) {
       cdf_est[[i]] <- drmfit$cdf_est[drmfit$cdf_est$k==k[i],2:3]
       row.names(cdf_est[[i]]) <- NULL
     }
 
-  } else if (is.list(q) || is.numeric(q)) {
+  } else if (is.list(x) || is.numeric(x)) {
 
-    if (is.list(q)) {
-      if (nK != length(q)) {
+    if (is.list(x)) {
+      if (nK != length(x)) {
         stop("The lengths of vector 'k' and list 'p' must be the same.")
       }
     }
 
-    if (is.numeric(q)) {
-      q_tmp <- q
-      q <- list(nK)
+    if (is.numeric(x)) {
+      x_tmp <- x
+      x <- list(nK)
       for (i in 1:nK) {
-        q[[i]] <- q_tmp
+        x[[i]] <- x_tmp
       }
-      rm(q_tmp)
+      rm(x_tmp)
     }
 
     x_sort <- drmfit$cdf_est[drmfit$cdf_est$k==0,]$x
@@ -1051,22 +1174,22 @@ cdfDRM <- function(k, q=NULL, drmfit, interpolation=TRUE)
 
         cdf_est_tmp <- drmfit$cdf_est[drmfit$cdf_est$k==k[i], 3]
 
-        cdf_est[[i]] <- numeric(length(q[[i]]))
-        for (j in 1:length(q[[i]])) {
-          if (q[[i]][j] <= x_sort[1]) {
+        cdf_est[[i]] <- numeric(length(x[[i]]))
+        for (j in 1:length(x[[i]])) {
+          if (x[[i]][j] <= x_sort[1]) {
             cdf_est[[i]][j] <- cdf_est_tmp[1]
-          } else if (q[[i]][j] >= tail(x_sort,1)) {
+          } else if (x[[i]][j] >= tail(x_sort,1)) {
             cdf_est[[i]][j] <- tail(cdf_est_tmp,1)
           } else {
-            pos_tmp <- length(which(x_sort <= q[[i]][j]))
+            pos_tmp <- length(which(x_sort <= x[[i]][j]))
             cdf_est[[i]][j] <- cdf_est_tmp[pos_tmp] +
               (cdf_est_tmp[pos_tmp + 1] - cdf_est_tmp[pos_tmp]) *
-              (q[[i]][j] - x_sort[pos_tmp]) /
+              (x[[i]][j] - x_sort[pos_tmp]) /
                 (x_sort[pos_tmp + 1] - x_sort[pos_tmp])
           }
         }
 
-        cdf_est[[i]] <- data.frame(x=q[[i]], cdf_est=cdf_est[[i]])
+        cdf_est[[i]] <- data.frame(x=x[[i]], cdf_est=cdf_est[[i]])
 
       }
 
@@ -1076,19 +1199,19 @@ cdfDRM <- function(k, q=NULL, drmfit, interpolation=TRUE)
 
         cdf_est_tmp <- drmfit$cdf_est[drmfit$cdf_est$k==k[i], 3]
 
-        cdf_est[[i]] <- numeric(length(q[[i]]))
-        for (j in 1:length(q[[i]])) {
-          if (q[[i]][j] <= x_sort[1]) {
+        cdf_est[[i]] <- numeric(length(x[[i]]))
+        for (j in 1:length(x[[i]])) {
+          if (x[[i]][j] <= x_sort[1]) {
             cdf_est[[i]][j] <- cdf_est_tmp[1]
-          } else if (q[[i]][j] >= tail(x_sort,1)) {
+          } else if (x[[i]][j] >= tail(x_sort,1)) {
             cdf_est[[i]][j] <- tail(cdf_est_tmp,1)
           } else {
-            pos_tmp <- length(which(x_sort <= q[[i]][j]))
+            pos_tmp <- length(which(x_sort <= x[[i]][j]))
             cdf_est[[i]][j] <- cdf_est_tmp[pos_tmp]
           }
         }
 
-        cdf_est[[i]] <- data.frame(x=q[[i]], cdf_est=cdf_est[[i]])
+        cdf_est[[i]] <- data.frame(x=x[[i]], cdf_est=cdf_est[[i]])
 
       }
 
@@ -1096,7 +1219,7 @@ cdfDRM <- function(k, q=NULL, drmfit, interpolation=TRUE)
 
   } else {
 
-    stop("The argument 'q' can be a list of the same length as the argument 'k', each component of which is a numerical vector, or 'q' can be a single numerical vector, or NULL (default). Other types are not allowed!")
+    stop("The argument 'x' can be a list of the same length as the argument 'k', each component of which is a numerical vector, or 'x' can be a single numerical vector, or NULL (default). Other types are not allowed!")
 
   }
 
@@ -1113,7 +1236,7 @@ cdfDRM <- function(k, q=NULL, drmfit, interpolation=TRUE)
 }
 
 quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
-                        adjust=FALSE, adj_factor=NULL, bw=NULL, show_bw=FALSE)
+                        adj=FALSE, adj_val=NULL, bw=NULL, show_bw=FALSE)
 {
   # Arguments handling and checking
   if ((length(k) != length(p)) && (length(k) != 1 ) && (length(p) != 1)) {
@@ -1131,24 +1254,40 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
     stop("The argument 'interpolation' must be a logical variable (either TRUE or FALSE)!")
   }
 
-  if (!is.logical(adjust)) {
-    stop("The argument 'adjust' must be a logical variable (either TRUE or FALSE)!")
+  if (!is.logical(adj)) {
+    stop("The argument 'adj' must be a logical variable (either TRUE or FALSE)!")
+  }
+
+  # Extract basic DRM information --- sample sizes
+  n_samples <- drmfit$drm_info$n_samples
+  if (adj==TRUE) {
+
+    if (is.null(adj_val)) {
+
+      adj_val <- -1/(2*n_samples[(k+1)])
+
+    } else {
+
+      if (!is.numeric(adj_val)) {
+        stop("The argument 'adj_val' must either be NULL or a numerical value vector!")
+      } else if (length(adj_val) != 1 && length(adj_val) != nK) {
+        stop("The length of the numerical argument 'adj_val' must either be 1 or the same as the length of the argument 'k' or, when the length of 'k' is 1, the same as the length of the argument 'p')!")
+      }
+
+      if (length(adj_val) == 1) adj_val <- rep(adj_val, nK)
+
+    }
+
   }
 
   if (!is.logical(show_bw)) {
     stop("The argument 'show_bw' must be a logical variable (either TRUE or FALSE)!")
   }
 
-  if (!is.null(adj_factor) &&
-      (!is.numeric(adj_factor) || length(adj_factor > 1))) {
-    stop("The argument 'adj_factor' must either be NULL or a single numerical value (length one)!")
-  }
-
   # Extract basic DRM information
   m <- drmfit$drm_info$m
   d <- drmfit$drm_info$d
-  mdele <- drmfit$mdele
-  n_samples <- drmfit$drm_info$n_samples
+  mele <- drmfit$mele
   n_total <- drmfit$drm_info$n_total
   basis_func <- drmfit$drm_info$basis_func
   rho <- drmfit$drm_info$rho[k+1]
@@ -1165,9 +1304,8 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
       for (i in 1:nK) {
 
         cdf_est_tmp <- drmfit$cdf_est[drmfit$cdf_est$k==k[i], 3]
-        if (adjust==TRUE) {
-          if (is.null(adj_factor)) adj_factor <- -1/(2*n_total)
-          cdf_est_tmp <- cdf_est_tmp + adj_factor
+        if (adj==TRUE) {
+          cdf_est_tmp <- cdf_est_tmp + adj_val[i]
         }
 
         if (p[i] >= tail(cdf_est_tmp, 1)) {
@@ -1188,9 +1326,8 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
       for (i in 1:nK) {
 
         cdf_est_tmp <- drmfit$cdf_est[drmfit$cdf_est$k==k[i], 3]
-        if (adjust==TRUE) {
-          if (is.null(adj_factor)) adj_factor <- -1/(2*n_total)
-          cdf_est_tmp <- cdf_est_tmp + adj_factor
+        if (adj==TRUE) {
+          cdf_est_tmp <- cdf_est_tmp + adj_val[i]
         }
 
         if (p[i] >= tail(cdf_est_tmp, 1)) {
@@ -1212,9 +1349,9 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
 
     # More arguments handling and checking
     if (is.null(bw)) {
-      bw <- bwEst(k, n_total, drmfit$p_est, drmfit$cdf_est,
-                  interpolation=interpolation, adjust=adjust,
-                  adj_factor=adj_factor)
+      bw <- bwEst(k, drmfit$drm_info$n_samples,
+                  drmfit$p_est, drmfit$cdf_est,
+                  interpolation=interpolation)
     } else {
       if (is.numeric(bw) && length(bw) == 1) {
         bw <- rep(bw, nK)
@@ -1240,9 +1377,8 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
       for (i in 1:nK) {
 
         cdf_est_tmp <- drmfit$cdf_est[drmfit$cdf_est$k==k[i], 3]
-        if (adjust==TRUE) {
-          if (is.null(adj_factor)) adj_factor <- -1/(2*n_total)
-          cdf_est_tmp <- cdf_est_tmp + adj_factor
+        if (adj==TRUE) {
+          cdf_est_tmp <- cdf_est_tmp + adj_val[i]
         }
 
         if (p[i] >= tail(cdf_est_tmp, 1)) {
@@ -1276,9 +1412,8 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
       for (i in 1:nK) {
 
         cdf_est_tmp <- drmfit$cdf_est[drmfit$cdf_est$k==k[i], 3]
-        if (adjust==TRUE) {
-          if (is.null(adj_factor)) adj_factor <- -1/(2*n_total)
-          cdf_est_tmp <- cdf_est_tmp + adj_factor
+        if (adj==TRUE) {
+          cdf_est_tmp <- cdf_est_tmp + adj_val[i]
         }
 
         if (p[i] >= tail(cdf_est_tmp, 1)) {
@@ -1313,7 +1448,7 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
 
         B_tmp <- .Call("BEstUfWrapper", as.double(k[i]),
                        as.double(length_vec[i]), as.double(n_samples),
-                       as.double(m), as.double(d), as.double(mdele),
+                       as.double(m), as.double(d), as.double(mele),
                        basis_func, new.env(), as.double(x_sort))
 
         BHat[i,] <- B_tmp/n_total
@@ -1326,7 +1461,7 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
 
         aHat_tmp <- .Call("aEstUfWrapper", as.double(k[i]), as.double(k[i]),
                           as.double(length_vec[i]), as.double(n_samples),
-                          as.double(m), as.double(d), as.double(mdele),
+                          as.double(m), as.double(d), as.double(mele),
                           basis_func, new.env(), as.double(x_sort))
 
         qe_cov[i,i] <- 1/rho[i]*(p[i] - p[i]^2) -
@@ -1343,7 +1478,7 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
           aHat_tmp <- .Call("aEstUfWrapper", as.double(k[i]), as.double(k[j]),
                             as.double(min(length_vec[i], length_vec[j])),
                             as.double(n_samples), as.double(m), as.double(d),
-                            as.double(mdele), basis_func, new.env(),
+                            as.double(mele), basis_func, new.env(),
                             as.double(x_sort))
 
           if (k[i]==k[j]) {
@@ -1374,7 +1509,7 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
 
         B_tmp <- .C("BEstWrapper", as.double(k[i]), as.double(length_vec[i]),
                     as.double(n_samples), as.double(m), as.double(d),
-                    as.double(mdele), as.double(basis_func),
+                    as.double(mele), as.double(basis_func),
                     as.double(x_sort), B=double(m*(d+1)))
 
         BHat[i,] <- (B_tmp$B)/n_total
@@ -1387,7 +1522,7 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
 
         aHat_tmp <- .C("aEstWrapper", as.double(k[i]), as.double(k[i]),
                        as.double(length_vec[i]), as.double(n_samples),
-                       as.double(m), as.double(d), as.double(mdele),
+                       as.double(m), as.double(d), as.double(mele),
                        as.double(basis_func), as.double(x_sort), a=double(1))
 
         qe_cov[i,i] <- 1/rho[i]*(p[i] - p[i]^2) -
@@ -1398,13 +1533,13 @@ quantileDRM <- function(k, p, drmfit, cov=TRUE, interpolation=TRUE,
 
         rm(aHat_tmp)
 
-        j <- i+1 
+        j <- i+1
         while (j <= nK) {
 
           aHat_tmp <- .C("aEstWrapper", as.double(k[i]), as.double(k[j]),
                          as.double(min(length_vec[i], length_vec[j])),
                          as.double(n_samples), as.double(m), as.double(d),
-                         as.double(mdele), as.double(basis_func),
+                         as.double(mele), as.double(basis_func),
                          as.double(x_sort), a=double(1))
 
           if (k[i]==k[j]) {
@@ -1630,7 +1765,7 @@ is_exact_singular <- function(x) {
 
   lu_decomp <- .C("dgetrfCWrapper", as.double(m), as.double(n),
                   as.double(x), as.double(m), double(min(m, n)),
-                  info=double(1), DUP=FALSE)
+                  info=double(1))
 
   return(lu_decomp$info > 0)
 

@@ -15,12 +15,13 @@ summaryDRM(drmfit)
 }
 \value{
   Summaries of the fitted DRM object, including the basic
-  information about the fitted DRM, maximum dual empirical
-  likelihood estimates (MDELE) of the DRM parameters, results of
-  the dual-empirical-likelihood ratio (DELR) test for hypothesis
-  about the DRM parameter \eqn{\beta}{beta} and some summary
-  statistics of the estimated distribution functions
-  \eqn{F_k}{F_k}, \eqn{k = 0, 1, ..., m}{k = 0, 1, ..., m}.
+  information about the fitted DRM, maximum empirical
+  likelihood estimates (MELE) of the DRM parameters, results
+  of the dual empirical likelihood ratio (DELR) test for
+  hypothesis about the DRM parameter \eqn{\beta}{beta} and
+  some summary statistics of the estimated distribution
+  functions \eqn{F_k}{F_k}, \eqn{k = 0, 1, ..., m}{k = 0, 1,
+    ..., m}.
 }
 \note{
   For more detailed but less user-friendly formatted information
