@@ -1,7 +1,7 @@
 # ##############################
 # This software is written by Song Cai and published under GPLv3.
 #
-# Version 1.3, Aprile 08, 2014.
+# Version 1.3.1, December 31, 2014.
 # ##############################
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {
@@ -213,7 +213,9 @@ negLDLGr_null <- function(par_null_full, g_null, g_null_jac,
                                 nrow=par_dim,
                                 ncol=par_dim_null_full)
 
-  g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_gamma)
+  if (par_dim_null > 0) {
+    g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_gamma)
+  }
   g_null_full_jac[par_pos$alpha, 1:m] <- diag(m) 
 
   return(as.numeric(t(g_null_full_jac) %*% par_full_gr))
@@ -253,7 +255,9 @@ negLDLGrUf_null <- function(par_null_full, g_null, g_null_jac,
                                 nrow=par_dim,
                                 ncol=par_dim_null_full)
 
-  g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_gamma)
+  if (par_dim_null > 0) {
+    g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_gamma)
+  }
   g_null_full_jac[par_pos$alpha, 1:m] <- diag(m) 
 
   return(as.numeric(t(g_null_full_jac) %*% par_full_gr))
@@ -879,7 +883,7 @@ drmdel <- function(x, n_samples, basis_func, g_null=NULL,
         }
       }
 
-      if (!is.null(g_null_jac)) {
+      if (!is.null(g_null_jac) || par_dim_null==0) {
         drm_opt_null <- do.call(optim, c(list(par=par_init_null_full,
                                               fn=negLDLUf_null,
                                               gr=negLDLGrUf_null),
@@ -991,7 +995,7 @@ drmdel <- function(x, n_samples, basis_func, g_null=NULL,
         }
       }
 
-      if (!is.null(g_null_jac)) {
+      if (!is.null(g_null_jac) || par_dim_null==0) {
         drm_opt_null <- do.call(optim, c(list(par=par_init_null_full,
                                               fn=negLDL_null,
                                               gr=negLDLGr_null),

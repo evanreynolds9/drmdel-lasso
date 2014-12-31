@@ -1,8 +1,9 @@
 /* This software is written by Song Cai and published under GPLv3.
  *
- * Version 1.3, April 08, 2014.
+ * Version 1.3.1, December 27, 2014.
  */
 
+#include <stdlib.h>
 #include <R_ext/Lapack.h>
 #include "utilities.h"
 

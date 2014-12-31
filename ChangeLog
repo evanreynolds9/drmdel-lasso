@@ -1,3 +1,11 @@
+2014-12-31, Song Cai, drmdel v1.3.1
+  * R/drmdel.R:
+    * minor bug fix: now for dual EL ratio test, when the null hypothesis
+	is fully specified, one should use options "g_null_jac=NULL" and
+	"par_dim_null=0" in function drmdel().
+  * src/utilities.c
+    * minor bug fix: add #include <stdlib.h>
+
 2014-04-08, Song Cai, drmdel v1.3
   * R/drmdel.R:
     * function drmdel: remove initial value inputs; change in null mapping

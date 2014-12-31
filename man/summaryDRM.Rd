@@ -10,8 +10,8 @@ summaryDRM(drmfit)
 }
 \arguments{
   \item{drmfit}{a fitted DRM object (an output from the
-    \code{\link{drmdel}} function). See \code{\link{drmdel}} for
-    details.}
+    \code{\link{drmdel}} function). See \code{\link{drmdel}}
+    for details.}
 }
 \value{
   Summaries of the fitted DRM object, including the basic
@@ -24,10 +24,10 @@ summaryDRM(drmfit)
     ..., m}.
 }
 \note{
-  For more detailed but less user-friendly formatted information
-  about a fitted DRM object, one should directly check the output
-  from the \code{\link{drmdel}} function. See \code{\link{drmdel}}
-  for details.
+  For more detailed but less user-friendly formatted
+  information about a fitted DRM object, one should directly
+  check the output from the \code{\link{drmdel}} function.
+  See \code{\link{drmdel}} for details.
 }
 \examples{
 # Data generation
@@ -40,14 +40,15 @@ x3 <- rgamma(n_samples[4], shape=18, rate=5)
 x4 <- rgamma(n_samples[5], shape=25, rate=2.6)
 x <- c(x0, x1, x2, x3, x4)
 
-# Fit a DRM with the basis function q(x) = (x, log(abs(x))), which
-# is the basis function for gamma family. This basis function is
-# the built-in basis function 6.
+# Fit a DRM with the basis function q(x) = (x, log(abs(x))),
+# which is the basis function for gamma family. This basis
+# function is the built-in basis function 6.
 drmfit <- drmdel(x=x, n_samples=n_samples, basis_func=6)
 
 # A brief summary of the DRM fit
 summaryDRM(drmfit)
 
-# List the details of the DRM fit.  See help(drmdel) for details.
+# List the details of the DRM fit.  See help(drmdel) for
+# details.
 names(drmfit)
 }

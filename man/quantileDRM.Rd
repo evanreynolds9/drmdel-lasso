@@ -1,35 +1,38 @@
 \name{quantileDRM}
 \alias{quantileDRM}
-\title{Estimate the quantiles of the populations under the DRM}
+\title{Estimate the quantiles of the populations under the
+  DRM}
 \description{
-  Suppose we have m+1 samples, labeled as
-  \eqn{0, \, 1, \, \ldots, \, m}{0, 1, ..., m},
-  whose population distributions satisfy the density ratio model
-  (DRM) (see \code{\link{drmdel}} for the definition of DRM). The
-  \code{\link{quantileDRM}} function estimates the quantiles of
-  the population distributions.
+  Suppose we have m+1 samples, labeled as \eqn{0, \, 1, \,
+    \ldots, \, m}{0, 1, ..., m}, whose population
+  distributions satisfy the density ratio model (DRM) (see
+  \code{\link{drmdel}} for the definition of DRM). The
+  \code{\link{quantileDRM}} function estimates the quantiles
+  of the population distributions.
 }
 \usage{
 quantileDRM(k, p, drmfit, cov=TRUE, interpolation=TRUE,
             adj=FALSE, adj_val=NULL, bw=NULL, show_bw=FALSE)
 }
 \arguments{
-  \item{k}{a vector of labels of populations whose quantiles are
-    to be estimated, with k[i] = 0, 1, ..., m. It could also be a
-    single integer value (in the set of {0, 1, ..., m}), in which
-    case, it means that we estimate the quantile of the same
-    population at each of the probability value p (see below for
-    the explaination of argument "p").}
-  \item{p}{a vector of probabilities (the same length as argument
-    "k") at which the quantiles are estimated; It could also be a
-    single value, in which case, it means that for each population
-    k, we estimate the quantile at a same probability value.}
+  \item{k}{a vector of labels of populations whose quantiles
+    are to be estimated, with k[i] = 0, 1, ..., m. It could
+    also be a single integer value (in the set of {0, 1,
+      ..., m}), in which case, it means that we estimate the
+    quantile of the same population at each of the
+    probability value p (see below for the explaination of
+    argument "p").}
+  \item{p}{a vector of probabilities (the same length as
+    argument "k") at which the quantiles are estimated; It
+    could also be a single value, in which case, it means
+    that for each population k, we estimate the quantile at
+    a same probability value.}
   \item{drmfit}{a fitted DRM object (an output from the
-    \code{\link{drmdel}} function). See \code{\link{drmdel}} for
-    details.}
-  \item{cov}{a logical variable specifying whether to estimate the
-    covariance matrix of the quantile estimators. The default is
-    TRUE.}
+    \code{\link{drmdel}} function). See \code{\link{drmdel}}
+    for details.}
+  \item{cov}{a logical variable specifying whether to
+    estimate the covariance matrix of the quantile
+    estimators. The default is TRUE.}
   \item{interpolation}{The EL quantile estimator is based on
     the EL CDF estimator. Hence the way the EL CDF estimate
     is calculated affects the result of the quantile
@@ -56,43 +59,46 @@ quantileDRM(k, p, drmfit, cov=TRUE, interpolation=TRUE,
     case, it means that for each population k, we use the
     same bandwidth. The default bandwidth, NULL, uses that
     described in Chen and Liu (2013).}
-  \item{show_bw}{a logical variable specifying whether to output
-    bandwidths when argument cov=TRUE. The default is FALSE.}
+  \item{show_bw}{a logical variable specifying whether to
+    output bandwidths when argument cov=TRUE. The default is
+    FALSE.}
 }
 \value{
   \item{est}{quantile estimates.}
   \item{cov}{estimated covariance matrix of the quantile
     estimators, available only if argument cov=TRUE.}
-  \item{bw}{bandwidths used for kernel density estimation required
-    for estimating the covariance matrix of the quantile
-    estimators, available only if argument cov=TRUE and
-    show_bw=TRUE.}
+  \item{bw}{bandwidths used for kernel density estimation
+    required for estimating the covariance matrix of the
+    quantile estimators, available only if argument cov=TRUE
+    and show_bw=TRUE.}
 }
 \details{
-  Denote the estimated CDF of the k\eqn{\textsuperscript{th}}{^th}
-  population as \eqn{\hat{F}_k(x)}{Fhat_k(x)}. The
-  p\eqn{\textsuperscript{th}}{^th} quantile of \eqn{F_k(x)}{F_k(x)} then
-  is estimated as
+  Denote the estimated CDF of the
+  k\eqn{\textsuperscript{th}}{^th} population as
+  \eqn{\hat{F}_k(x)}{Fhat_k(x)}. The
+  p\eqn{\textsuperscript{th}}{^th} quantile of
+  \eqn{F_k(x)}{F_k(x)} then is estimated as
   \deqn{\inf\{ x: \, \hat{F}_k(x) \ge p\}.}{
       inf{x: Fhat_k(x) >= p}.}
 
-  The estimated CDF \eqn{\hat{F}_k(x)}{Fhat_k(x)} reaches its maximum
-  value, 1, at the largest observed data point. If the true CDF
-  \eqn{F_k(x)}{F_k(x)} is
-  continuous, \eqn{F_k(x)}{F_k(x)} tends to 1 when x tends to
-  infinity. Hence, when estimate an upper quanitle, say
-  0.95\eqn{\textsuperscript{th}}{^th} quantile, of \eqn{F_k}{F_k},
-  the quantile estimator is likely to under estimate the ture
-  quantile, especially when sample size is not too large. To
-  adjust an upper quantile estimator for possible
-  under-estimation, one may
-  want to adjust the estimated CDF as
+  The estimated CDF \eqn{\hat{F}_k(x)}{Fhat_k(x)} reaches
+  its maximum value, 1, at the largest observed data point.
+  If the true CDF \eqn{F_k(x)}{F_k(x)} is continuous,
+  \eqn{F_k(x)}{F_k(x)} tends to 1 when x tends to infinity.
+  Hence, when estimate an upper quanitle, say
+  0.95\eqn{\textsuperscript{th}}{^th} quantile, of
+  \eqn{F_k}{F_k}, the quantile estimator is likely to under
+  estimate the ture quantile, especially when sample size is
+  not too large. To adjust an upper quantile estimator for
+  possible under-estimation, one may want to adjust the
+  estimated CDF as
   \deqn{\hat{F}_k(x) + \mbox{adj\_val}.}{
       Fhat_k(x) + adj_val.}
-  and use the adjusted CDF to estimate quantiles. To make an upper
-  quantile estimator larger, the adj_val should have a positive
-  value. Similarly, to adjust lower quantile estimates for
-  possible over-estimation, the adj_val should have a negative value.
+  and use the adjusted CDF to estimate quantiles. To make an
+  upper quantile estimator larger, the adj_val should have a
+  positive value. Similarly, to adjust lower quantile
+  estimates for possible over-estimation, the adj_val should
+  have a negative value.
 
   The \code{\link{quantileDRM}} function, by default, does
   not adjust CDF estimators (\code{adjust=FALSE}). When
@@ -105,8 +111,8 @@ quantileDRM(k, p, drmfit, cov=TRUE, interpolation=TRUE,
 }
 \references{
   J. Chen and Y. Liu (2013),
-  Quantile and quantile-function estimations under density ratio
-  model.
+  Quantile and quantile-function estimations under density
+  ratio model.
   \emph{The Annals of Statistics}, 41(3):1669-1692.
 }
 \examples{
@@ -120,14 +126,14 @@ x3 <- rgamma(n_samples[4], shape=18, rate=5)
 x4 <- rgamma(n_samples[5], shape=25, rate=2.6)
 x <- c(x0, x1, x2, x3, x4)
 
-# Fit a DRM with the basis function q(x) = (x, log(abs(x))), which
-# is the basis function for gamma family. This basis function is
-# the built-in basis function 6.
+# Fit a DRM with the basis function q(x) = (x, log(abs(x))),
+# which is the basis function for gamma family. This basis
+# function is the built-in basis function 6.
 drmfit <- drmdel(x=x, n_samples=n_samples, basis_func=6)
 
 # Quantile estimation
-# Denote the p^th quantile of the k^th, k=0, 1, ..., 4, population
-# as q_{k,p}.
+# Denote the p^th quantile of the k^th, k=0, 1, ..., 4,
+# population as q_{k,p}.
 
 # Estimate q_{0,0.25}, q_{0,0.6}, q_{1,0.1} and q_{2,0.1}.
 (qe <- quantileDRM(k=c(0, 0, 1, 2), p=c(0.25, 0.6, 0.1, 0.1),
