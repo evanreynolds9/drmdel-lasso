@@ -1,3 +1,6 @@
+2021-10-23, Song Cai, drmdel v1.3.2
+  * Minor update to fix a compilation error.
+
 2014-12-31, Song Cai, drmdel v1.3.1
   * R/drmdel.R:
     * minor bug fix: now for dual EL ratio test, when the null hypothesis

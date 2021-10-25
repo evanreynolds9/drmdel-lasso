@@ -1,6 +1,6 @@
-ab9b9dcd9af2fc8568479eef3e4d6519 *ChangeLog
-1fa50499d1c093ccc0c76e9a0ccdc721 *DESCRIPTION
-bd402d9e5e55e835351b356d59f29b3a *NAMESPACE
+ea0bb3c60e260d6d655dbb2bc8434929 *ChangeLog
+c984d030367e5ed9824c4c3b5d3fafe2 *DESCRIPTION
+a7a9eca5b5fb121835b6f283cd69b6ff *NAMESPACE
 a6dd5cb0a38156f4f93f5bdd2277edfd *R/drmdel.R
 d364a016eebabc52e72f5a4466103ca0 *inst/examples/examples.R
 87ae07bf62fcc7bbdacacb718ab227d5 *man/cdfDRM.Rd
@@ -15,6 +15,6 @@ f87c4ce077b4ddf8733c67e140793188 *man/quantileCompWald.Rd
 39cc8e62c79c64b62af4c357dd5ea8a5 *src/basisFuncs.c
 d971da5933b1bad4eae71819b305849d *src/basisFuncs.h
 8e1eaca325b9b8fe4981117836da528f *src/drmdel.c
-c2f3a2106fcf9809c35b30d3ab523a8b *src/utilities.c
+12859812c19e1a9b7569eac00e9b1879 *src/utilities.c
 dea1d26750bb7405a27788a177426b98 *src/utilities.h
 ccfc9b96c3cfa7ae0b21cd0f7cc130d1 *tests/drmdelTest.R

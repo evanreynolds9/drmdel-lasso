@@ -1,4 +1,7 @@
 useDynLib(drmdel, .registration=TRUE)
 
+importFrom("stats", "density", "optim", "p.adjust", "pchisq")
+importFrom("utils", "tail")
+
 #exportPattern("^[^\\.]")
 export("drmdel", "summaryDRM", "meleCov", "densityDRM", "cdfDRM", "quantileDRM", "quantileCompWald")
