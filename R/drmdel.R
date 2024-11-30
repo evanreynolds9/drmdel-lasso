@@ -2,6 +2,8 @@
 # This software is written by Song Cai and published under GPLv3.
 #
 # Version 1.3.1, December 31, 2014.
+#
+# Lasso functionality added by Evan Reynolds, 2024
 # ##############################
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {

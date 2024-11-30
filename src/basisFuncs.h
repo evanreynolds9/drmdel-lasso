@@ -50,3 +50,7 @@ void h3d(double x, /*input*/
 /* model 11 */
 void h4a(double x, /*input*/
     double * restrict h /*output*/);
+
+/* model 12 */
+void h5a(double x, /*input*/
+double * restrict h /*output*/);

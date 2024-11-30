@@ -330,6 +330,17 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
           n_samples_use, (unsigned long)*m, 4,
           par_mat, &h4a, x_mat);
       break;
+    
+    case 12 :
+      /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+      if ((unsigned long)*d != 5) {
+        errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+      }
+      *ldl_val = logDualL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 5,
+                        par_mat, &h5a, x_mat);
+    break;
 
     default :
       errMsg("'Model' must be an integer between 1 and 11 or a function of a single data point");
@@ -644,6 +655,18 @@ void logDualLGrWrapper(double * restrict n_total, /*inputs*/
           par_mat, &h4a, x_mat, /*inputs*/
           ldl_gr_mat /*outputs*/);
       break;
+      
+    case 12 :
+      /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+      if ((unsigned long)*d != 5) {
+        errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+      }
+      logDualLGr((unsigned long)*n_total, /*inputs*/
+        /*n_samples_use, (unsigned long)*m, (unsigned long)*d, [>inputs<]*/
+        n_samples_use, (unsigned long)*m, 5, /*inputs*/
+        par_mat, &h5a, x_mat, /*inputs*/
+        ldl_gr_mat /*outputs*/);
+    break;
 
     default :
       errMsg("'Model' must be an integer between 1 and 11 or a function of a single data point");
@@ -1080,6 +1103,17 @@ void logDualLHessianWrapper(double * restrict n_total, /*inputs*/
           par_mat, &h4a, x, /*inputs*/
           ldl_hessian_mat /*outputs*/);
       break;
+      
+    case 12 :
+      /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+      if ((unsigned long)*d != 5) {
+        errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+      }
+      logDualLHessian((unsigned long)*n_total, n_samples, /*inputs*/
+        (unsigned long)*m, 5, /*inputs*/
+        par_mat, &h5a, x, /*inputs*/
+        ldl_hessian_mat /*outputs*/);
+      break;
 
     default :
       errMsg("'Model' must be an integer between 1 and 11 or a function of a single data point");
@@ -1328,6 +1362,18 @@ void aEstWrapper(double * restrict r, double * restrict s, /*inputs*/
           (unsigned long)*m, 4, /*inputs*/
           par_mat, &h4a, x_sort /*inputs*/);
       break;
+      
+    case 12 :
+      /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+      if ((unsigned long)*d != 5) {
+        errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+      }
+      *a_est = aEst((unsigned long)*r, (unsigned long)*s, /*inputs*/
+        (unsigned long)*n_min, n_samples, /*inputs*/
+        (unsigned long)*m, 5, /*inputs*/
+        par_mat, &h5a, x_sort /*inputs*/);
+      break;
+      
 
     default :
       errMsg("'Model' must be an integer between 1 and 11 or a function of a single data point");
@@ -1590,6 +1636,17 @@ void BEstWrapper(double * restrict r, double * restrict n_r, /*inputs*/
           (unsigned long)*m, 4, /*inputs*/
           par_mat, &h4a, x_sort, /*inputs*/
           B_est /*output*/);
+      break;
+    
+    case 12 :
+      /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+      if ((unsigned long)*d != 5) {
+        errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+      }
+      BEst((unsigned long)*r, (unsigned long)*n_r, n_samples, /*inputs*/
+        (unsigned long)*m, 5, /*inputs*/
+        par_mat, &h5a, x_sort, /*inputs*/
+        B_est /*output*/);
       break;
 
     default :
@@ -1943,6 +2000,16 @@ void probBlEstWrapper(double * restrict n_total, /*inputs*/
           (unsigned long) *m, 4, par_mat,
           &h4a, x, (unsigned short) *normalize, pBlEst);
       break;
+    
+    case 12 :
+      /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+      if ((unsigned long)*d != 5) {
+        errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+      }
+      probBlEst((unsigned long)*n_total, n_samples,
+                (unsigned long) *m, 5, par_mat,
+                &h5a, x, (unsigned short) *normalize, pBlEst);
+      break;
 
     default :
       errMsg("'Model' must be an integer between 1 and 11 or a function of a single data point");
@@ -2227,6 +2294,17 @@ void probEstWrapper(double * restrict n_total, /*inputs*/
           (unsigned long) *m, 4, /*inputs*/
           par_mat, &h4a, x, (unsigned short) *normalize, /*inputs*/
           pEst_mat /*output*/);
+      break;
+    
+    case 12 :
+      /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+      if ((unsigned long)*d != 5) {
+        errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+      }
+      probEst((unsigned long)*n_total, n_samples, /*inputs*/
+        (unsigned long) *m, 5, /*inputs*/
+        par_mat, &h5a, x, (unsigned short) *normalize, /*inputs*/
+        pEst_mat /*output*/);
       break;
 
     default :

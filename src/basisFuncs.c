@@ -6,7 +6,7 @@
 #include <math.h>
 #include "basisFuncs.h"
 
-/* Basis functions, h(x), for dentity ratio models */
+/* Basis functions, h(x), for density ratio models */
 
 /* model 1 */
 void h1x(double x, /*input*/
@@ -85,4 +85,11 @@ void h4a(double x, /*input*/
     double * restrict h /*output*/)
 {
   h[0] = log(fabs(x)); h[1] = sqrt(fabs(x)); h[2] = x; h[3] = x*x;
+}
+
+/* model 12 */
+void h5a(double x, /*input*/
+double * restrict h /*output*/)
+{
+  h[0] = log(fabs(x)); h[1] = pow(log(fabs(x)), 2); h[2] = sqrt(fabs(x)); h[3] = x; h[4] = x*x;
 }
