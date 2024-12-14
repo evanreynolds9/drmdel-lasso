@@ -72,6 +72,18 @@ void R_val(unsigned long m, unsigned long d, double * restrict h, /*inputs*/
 
 }
 
+void pen_val(unsigned long d, /*inputs*/
+  double *restrict par_mat_i, /*inputs*/
+  double *restrict l2 /*outputs*/)
+/* l2 is a d length vector that stores the squared sum
+ * of the coefficients of each basis function term */
+{
+  unsigned long i;
+  for (i=1; i<d+1; ++i){
+    l2[i-1] += par_mat_i[i]*par_mat_i[i];
+  }
+}
+
 double logDualL(unsigned long n_total, /*inputs*/
     unsigned long * restrict n_samples, /*inputs*/
     unsigned long m, unsigned long d, /*inputs*/
@@ -353,6 +365,319 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
   free((void *) x_mat);
   free((void *) par_mat);
 
+}
+
+double logDualLGL(unsigned long n_total, /*inputs*/
+  unsigned long * restrict n_samples, /*inputs*/
+  unsigned long m, unsigned long d, /*inputs*/
+  double *restrict* restrict par_mat, /*inputs*/
+  void (*h_func)(double, double * restrict), /*input*/
+  double *restrict* restrict x_mat /*inputs*/,
+  double lambda /*inputs*/)
+  /* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
+   * Inputs:
+   *   n_total -- total sample size;
+   *   n_samples -- a vector of length m+1 specifying the size of each sample;
+   *   m -- number of samples - 1;
+   *   d -- dimension of h(x); 
+   *   par_mat -- values of parameters (pointer matrix of dimension m by (d+1));
+   *   h_func -- the basis function of the DRM;
+   *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
+   *   lambda -- penalty threshold for the group lasso penalty
+   * Outputs:
+   *   ldlGL_val -- value of group lasso objective function at a given "par" value.
+   */
+{
+  /* loop indices */
+  unsigned long i, j, k;
+  
+  double * restrict lp;
+  lp = (double * restrict) malloc((size_t) (m*sizeof(double)));
+  if (lp == NULL) errMsg("malloc() allocation failure for lp!");
+  for (i = 0; i < m; ++i) {
+    lp[i] = 0;
+  }
+  
+  double * restrict h;
+  h = (double * restrict) malloc((size_t) (d*sizeof(double)));
+  if (h == NULL) errMsg("malloc() allocation failure for h!");
+  /* Create vector for l2 norms in penalty*/
+  double * restrict l2;
+  l2 = (double * restrict) malloc((size_t) (d*sizeof(double)));
+  if (l2 == NULL) errMsg("malloc() allocation failure for l2!");
+  for (i = 0; i < d; ++i) {
+    h[i] = 0;
+    l2[i] = 0;
+  }
+  
+  double * restrict rho;
+  rho = (double * restrict) malloc((size_t) ((m+1)*sizeof(double)));
+  if (rho == NULL) errMsg("malloc() allocation failure for rho!");
+  for (i = 0; i < m+1; ++i) {
+    rho[i] = (double)n_samples[i]/(double)n_total;
+  }
+  
+  
+  /*other variables*/
+  double S;
+  
+  /*define output*/
+  double ldlGL_val;
+  ldlGL_val = 0.0;
+  
+  for (i = 0; i < m+1; ++i) {
+    for (j = 0; j < n_samples[i]; ++j) {
+      
+      (*h_func)(x_mat[i][j], h); /*update h*/
+  
+      lp_val(m, d, h, par_mat, lp); /*update lp*/
+  
+      /* calculating q_i */
+      S = rho[0];
+      for (k = 0; k < m; ++k) {
+        S += rho[k+1] * exp(lp[k]);
+      }
+  
+      if (i == 0) {
+        ldlGL_val = ldlGL_val - log(S);  
+      } else {
+        ldlGL_val = ldlGL_val + lp[i-1] - log(S);
+      }
+  
+    }
+    if (i==0){
+      continue;
+    }
+    pen_val(d, par_mat[i-1], l2);/*update l2*/
+  }
+  
+  /*Add pen to ldlGL_val*/
+  for (i=0; i<d; ++i){
+    ldlGL_val -= lambda*sqrt(l2[i]);/*subtracting because we will return the negative*/
+  }
+  
+  /* free arrays */
+  free((void *) lp);
+  free((void *) h);
+  free((void *) rho);
+  free((void *) l2);
+  
+  return ldlGL_val;
+  
+}
+
+void logDualLGLWrapper( double * restrict n_total, /*inputs*/
+     double * restrict n_samples, /*inputs*/
+     double * restrict m, double * restrict d,
+     double * restrict par, /*inputs*/
+     double * restrict model, double * restrict x, /*inputs*/
+     double * restrict lambda, /*inputs*/
+     double * restrict ldlGL_val /*output*/)
+  /* Calculating objective group lasso DEL function at a given parameter value.
+   * Inputs:
+   *   n_total -- total sample size;
+   *   n_samples -- a vector of length m+1 specifying the size of each sample;
+   *   m -- number of samples - 1;
+   *   d -- dimension of h(x); 
+   *   par_mat -- values of parameters (pointer matrix of dimension m by (d+1));
+   *   h_func -- the basis function of the DRM;
+   *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
+   *   lambda -- a positive threshold for the group lasso penalty.
+   * Outputs:
+   *   ldlGL_val -- value of the objective function at a given "par" value.
+   */
+{
+  /* loop indices */
+  unsigned long i;
+  
+  unsigned long * restrict n_samples_use;
+  n_samples_use = (unsigned long * restrict) malloc((size_t) (((unsigned
+                                                                  long)*m + 1)*sizeof(unsigned long)));
+  if (n_samples_use == NULL) {
+    errMsg("malloc() allocation failure for m_samples_use!");
+  }
+  for (i = 0; i < ((unsigned long)*m + 1); ++i) {
+    n_samples_use[i] = (unsigned long)n_samples[i];
+  }
+  
+  double *restrict* restrict par_mat;
+  double *restrict* restrict x_mat;
+  
+  /* converting x and par to matrices */
+  par_mat = (double *restrict* restrict) malloc((size_t)
+                                                  (((unsigned long)*m)*sizeof(double*)));
+  if (par_mat == NULL) errMsg("malloc() allocation failure for par_mat!");
+  par_mat[0] = par;
+  for (i = 1; i < (unsigned long)*m; ++i){
+    par_mat[i] = par_mat[i-1] + ((unsigned long)*d + 1);
+  }
+  
+  x_mat = (double *restrict* restrict) malloc((size_t) (((unsigned
+                                                            long)*m+1)*sizeof(double*)));
+  if (x_mat == NULL) errMsg("malloc() allocation failure for x_mat!");
+  x_mat[0] = x;
+  for (i = 1; i < ((unsigned long)*m + 1); ++i){
+    x_mat[i] = x_mat[i-1] + n_samples_use[i - 1];
+  }
+  
+  /* calculating objective function at 'par' */
+  switch ((unsigned long)*model)
+  {
+  case 1 :
+    /*printf("h(x) = (x)");*/
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 1, h(x) = x, d must be 1!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 1,
+                        par_mat, &h1x, x_mat,
+                        *lambda);
+    break;
+    
+  case 2 :
+    /*printf("h(x) = (log(x))");*/
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 2, h(x) = log(x), d must be 1!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 1,
+                        par_mat, &h1logx, x_mat,
+                        *lambda);
+    break;
+    
+  case 3 :
+    /*printf("h(x) = (sqrt(x))");*/
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 3, h(x) = sqrt(x), d must be 1!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 1,
+                        par_mat, &h1sqrtx, x_mat,
+                        *lambda);
+    break;
+    
+  case 4 :
+    /*printf("h(x) = (x^2)");*/
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 4, h(x) = x^2, d must be 1!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 1,
+                        par_mat, &h1xSquare, x_mat,
+                        *lambda);
+    break;
+    
+  case 5 :
+    /*printf("h(x) = (x, x^2) -- Normal model");*/
+    if ((unsigned long)*d != 2) {
+      errMsg("For model 5 (Normal model), h(x) = (x, x^2), d must be 2!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 2,
+                        par_mat, &h2Normal, x_mat,
+                        *lambda);
+    break;
+    
+  case 6 :
+    /*printf("h(x) = (x, log(x)) -- Gamma model");*/
+    if ((unsigned long)*d != 2) {
+      errMsg("For model 6 (Gamma model), h(x) = (x, log(x)), d must be 2!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 2,
+                        par_mat, &h2Gamma, x_mat,
+                        *lambda);
+    break;
+    
+  case 7 :
+    /*printf("h(x) = (log(x), sqrt(x), x)");*/
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 7, h(x) = (log(x), sqrt(x), x), d must be 3!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 3,
+                        par_mat, &h3a, x_mat,
+                        *lambda);
+    break;
+    
+  case 8 :
+    /*printf("h(x) = (log(x), sqrt(x), x^2)");*/
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 8, h(x) = (log(x), sqrt(x), x^2), d must be 3!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 3,
+                        par_mat, &h3b, x_mat,
+                        *lambda);
+    break;
+    
+  case 9 :
+    /*printf("h(x) = (log(x), x, x^2)");*/
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 9, h(x) = (log(x), x, x^2), d must be 3!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 3,
+                        par_mat, &h3c, x_mat,
+                        *lambda);
+    break;
+    
+  case 10 :
+    /*printf("h(x) = (sqrt(x), x, x^2)");*/
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 10, h(x) = (sqrt(x), x, x^2), d must be 3!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 3,
+                        par_mat, &h3d, x_mat,
+                        *lambda);
+    break;
+    
+  case 11 :
+    /*printf("h(x) = (log(x), sqrt(x), x, x^2)");*/
+    if ((unsigned long)*d != 4) {
+      errMsg("For model 11, h(x) = (log(x), sqrt(x), x, x^2), d must be 4!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 4,
+                        par_mat, &h4a, x_mat,
+                        *lambda);
+    break;
+    
+  case 12 :
+    /*printf("h(x) = (log(x), log(x)^2, sqrt(x), x, x^2)");*/
+    if ((unsigned long)*d != 5) {
+      errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+    }
+    *ldlGL_val = logDualLGL((unsigned long)*n_total,
+                        /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
+                        n_samples_use, (unsigned long)*m, 5,
+                        par_mat, &h5a, x_mat,
+                        *lambda);
+    break;
+    
+  default :
+    errMsg("'Model' must be an integer between 1 and 12 or a function of a single data point");
+  break;
+  
+  }
+  
+  /* free arrays */
+  free((void *) n_samples_use);
+  free((void *) x_mat);
+  free((void *) par_mat);
+  
 }
 
 void logDualLGr(unsigned long n_total, /*inputs*/

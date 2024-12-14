@@ -9,4 +9,4 @@ All credit for the original `drmdel` project goes to the author, Dr. Song Cai.
 1. Ensure you have a C compiler installed on your machine.
 2. To compile the C functions to a shared library, run `R CMD SHLIB drmdelLasso.c utilities.c basisFuncs.c -o <name>.dll` from the `src` folder in the terminal.
 3. Within R session, navigate to the `src` folder and run `dyn.load("<name>.dll")` to make the C functions accessible.
-4. In the same R session, navigate to the R directory and run `source("drmdelLasso.R")` to import the available R wrappers and functions to your session.
+4. In the same R session, run `source("..\\R\\drmdelLasso.R")` to import the available R wrappers and functions to your session.

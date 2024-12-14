@@ -27,6 +27,31 @@ negLDL <- function(par, x, n_total, n_samples, m, model, d) {
 
 }
 
+negLDLGL <- function(par, x, n_total, n_samples, m, model, d, lambda) {
+  # Calculate negative log dual empirical likelihood for a
+  # given value of parameter, with a GL penalty applied across
+  # the coefficients of each basis function term and a specified
+  # penalty threshold.
+  #
+  # logDualLGLWrapper prototype:
+  # void logDualLGLWrapper( double * restrict n_total, /*inputs*/
+  #     double * restrict n_samples, /*inputs*/
+  #     double * restrict m, double * restrict d,
+  #     double * restrict par, /*inputs*/
+  #     double * restrict model, double * restrict x, /*inputs*/
+  #     double * restrict lambda, /*inputs*/
+  #     double * restrict ldl_val /*output*/)
+  
+  logDL <- .C("logDualLGLWrapper", as.double(n_total),
+              as.double(n_samples), as.double(m), as.double(d),
+              as.double(par), as.double(model), as.double(x), 
+              as.double(lambda),
+              ldl_val=double(1))
+  
+  return(-logDL$ldl_val)
+  
+}
+
 # User specified basis function version
 negLDLUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
 # Calculate negative log dual empirical likelihood for a
@@ -97,42 +122,6 @@ gen_par_pos <- function(m, d){
   return(list(alpha=par_pos_alpha, beta=par_pos_beta))
 
 }
-
-#g_null_jac_full <- function(g_null_jac, par_null, par_alpha,
-                            #par_dim, par_dim_null, par_pos) {
-## par_dim is the dimension of DRM parameter $theta$, which
-##   equals m*(d+1).
-## par_dim_null is the dimension of the null mapping, i.e.
-##   dim(gamma).
-##
-## Jacobian matrix for g_null_full (null mapping from (alpha,
-## gammma) to (theta_1, theta_2, ..., theta_m))
-
-  #par_dim_null_full <- m + par_dim_null
-  #g_null_full_jac <- matrix(rep(0, par_dim*par_dim_null_full),
-                                #nrow=par_dim,
-                                #ncol=par_dim_null_full)
-
-  ##par_gamma <- par_null_full[-(1:m)]  # get gamma
-  #g_null_full_jac[par_pos$beta, (m+1):par_dim_null_full] <- g_null_jac(par_null_full[-(1:m)])
-  #g_null_full_jac[par_pos$alpha, 1:m] <- diag(m) 
-
-  #return(g_null_full_jac)
-#}
-
-#g_null_full <- function(g_null, par_null, par_alpha,
-                        #par_dim, par_pos) {
-
-  #par <- numeric(par_dim)
-
-  #par_beta <- g_null(par_null)
-
-  #par[par_pos$alpha] <- par_alpha
-  #par[par_pos$beta] <- par_beta
-
-  #return(par)
-
-#}
 
 negLDL_null <- function(par_null_full, g_null, g_null_jac=NULL,
                         par_pos, par_dim, par_dim_null=NULL,
