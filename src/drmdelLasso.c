@@ -11,6 +11,41 @@
 #include "basisFuncs.h"
 #include "utilities.h"
 
+/* Pseudo-code for bcgd in C
+ * void bcgd(*initial parameter estimate* theta_0,
+ *            *inputs for evaluation of negldl, gradient, hessian etc.* x, basis_func, lambda_g,*include other info (m,d,n)
+ *            *hyperparameters for algorithm* omega_0, psi, sigma,
+ *            *convergence criteria*, threshold)
+ * {
+ *  theta_i = theta_0 *set the initial value*
+ *  while(not converged){
+ *    unsigned long g; *iterate over the groups*
+ *    for(g = 0; g <= d; g++){
+ *      v_g; *set the descent direction vector*
+ *      compute h_g;
+ *      compute grad_g;
+ *      if(g == 0){ *we are optimizing over the intercept components*
+ *        v_g = grad_g/h_g
+ *      } else { *we are optimizing over one of the groups of basis function coefficients
+ *        prod_h_g_theta_g = h_g * theta_g *faster to compute now*
+ *        sum_vec = grad_g + prod_h_g_theta_g
+ *        if(||sum_vec|| <= lambda_g) {
+ *          v_g = -theta_g
+ *        } else{
+ *          v_g = (1/h_g)*(grad_g - lambda_g*sum_vec/||sum_vec||))
+ *        }
+ *      }
+ *      if(v_g != 0){*we need to do a line search to find the descent distance*
+ *        compute delta_g;
+ *        omega_0_g = min(omega_)
+ *      }
+ *    }
+ *  }
+ * }
+ *
+ */
+
+
 void lp_val(unsigned long m, unsigned long d, double * restrict h, /*inputs*/
     double *restrict* restrict par_mat, /*inputs*/
     double *restrict lp /*outputs*/)
@@ -355,7 +390,7 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
     break;
 
     default :
-      errMsg("'Model' must be an integer between 1 and 11 or a function of a single data point");
+      errMsg("'Model' must be an integer between 1 and 12 or a function of a single data point");
       break;
 
   }
@@ -366,6 +401,31 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
   free((void *) par_mat);
 
 }
+
+// void bcgd ( double * restrict n_total, /*inputs*/
+//   double * restrict n_samples, /*inputs*/
+//   double * restrict m, double * restrict d,
+//   double * restrict model, double * restrict x, /*inputs*/
+//   double * restrict lambda, /*inputs*/
+//   double * restrict max_iter, /*inputs*/
+//   double * restrict par, /*outputs*/
+//   double * restrict ldlGL_val /*outputs*/)
+//   /* Computing the bcgd estimates of the negldl GL minimizer
+//   *   n_total -- total sample size;
+//   *   n_samples -- a vector of length m+1 specifying the size of each sample;
+//   *   m -- number of samples - 1;
+//   *   d -- dimension of h(x);
+//   *   h_func -- the basis function of the DRM;
+//   *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
+//   *   lambda -- penalty threshold for the group lasso penalty
+//   *   max_iter -- the maximum iterations for the algorithm
+//   * Outputs:
+//   *   par -- minimizer of the group lasso objective function;
+//   *   ldlGL_val -- minimum value of the group lasso objective function.
+//   */
+// {
+//   /* Create a matrix for the group indices*/
+// }
 
 double logDualLGL(unsigned long n_total, /*inputs*/
   unsigned long * restrict n_samples, /*inputs*/
@@ -678,6 +738,275 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
   free((void *) x_mat);
   free((void *) par_mat);
   
+}
+
+double hG(unsigned long n_total, /*inputs*/
+  double * restrict n_samples, /*inputs*/
+  unsigned long m, unsigned long d, /*inputs*/
+  double *restrict* restrict par_mat, /*inputs*/
+  void (*h_func)(double, double * restrict), /*input*/
+  double * restrict x, /*inputs*/
+  unsigned long g /*inputs*/)
+  /* Calculate the maximum diagonal of the negative Hessian for a given group.
+   * Inputs:
+   *   n_total -- length of data;
+   *   n_samples -- a (double, not unsigned long!) vector of length m+1
+   *     specifying the size of each sample;
+   *   m -- number of samples - 1;
+   *   d -- dimension of h(x); 
+   *   par_mat -- values of parameters (pointer matrix of dimension m by (d+1));
+   *   h_func -- the basis function of the DRM;
+   *   x -- data, a long vector in order of as x_0, x_1, ..., x_m.
+   *   g -- the lasso group
+   * Outputs:
+   *   h_g -- the maximum of the diagonal along the group's entries.
+   */
+{
+  /* loop indices */
+  unsigned long i, k, l, kh, lh;
+  
+  double * restrict R;
+  R = (double * restrict) malloc((size_t) (m*sizeof(double)));
+  if (R == NULL) errMsg("malloc() allocation failure for R!");
+  for (i = 0; i < m; ++i) {
+    R[i] = 0.0;
+  }
+  
+  double * restrict H;
+  H = (double * restrict) malloc((size_t) ((d+1)*sizeof(double)));
+  if (H == NULL) errMsg("malloc() allocation failure for H!");
+  H[0] = 1.0;
+  for (i = 1; i < (d+1); ++i) {
+    H[i] = 0.0;
+  }
+  
+  /*qaa matrix*/
+  double *restrict* restrict qaa;
+  qaa = (double *restrict* restrict) malloc((size_t) (m*sizeof(double*)));
+  if (qaa == NULL) errMsg("malloc() allocation failure for qaa!");
+  
+  qaa[0] = (double * restrict) malloc((size_t) ((m*m)*sizeof(double)));
+  if (qaa[0] == NULL) errMsg("malloc() allocation failure for qaa[0]!");
+  for(i = 1; i < m; ++i) {
+    qaa[i] = qaa[i-1] + m;
+  }
+  
+  for (i = 0; i < m; ++i) {
+    for (k = 0; k < m; ++k) {
+      qaa[i][k] = 0.0;
+    }
+  }
+  
+  /*other variables*/
+  double S;
+  
+  /*output variable*/
+  double h_g;
+  
+  for (i = 0; i < n_total; ++i) {
+    
+    /*update H = (1, h^T)^T*/
+    (*h_func)(x[i], H+1); /*update H*/
+    
+    R_val(m, d, H+1, par_mat, n_samples, R); /*update R*/
+    
+    /*calculating S*/
+    S = n_samples[0];
+    for (k = 0; k < m; ++k) {
+      S += R[k];
+    }
+    
+    for (k = 0; k < m; ++k) {
+      
+      for (l = 0; l < m; ++l) {
+        qaa[k][l] = R[k]*R[l]/(S*S);
+      }
+      
+    }
+    for (k = 0; k < m; ++k) {
+      qaa[k][k] -= R[k]/S;
+    }
+    
+    // Initialize output as the group's first diagonal entry
+    h_g = (-1)*qaa[0][0]*H[g]*H[g];
+    
+    /*calculating the group's diagonal's of the negative hessian, and saving the maximum.*/
+    for (k = 1; k < m; ++k) {
+      if(h_g < (-1)*qaa[k][k]*H[g]*H[g]){
+        h_g = (-1)*qaa[k][k]*H[g]*H[g];
+      }
+    }
+    
+  }
+  
+  /* free arrays */
+  free((void *) R);
+  free((void *) H);
+  
+  free((void *) qaa[0]);
+  free((void *) qaa);
+  
+  /*return h_g*/
+  return h_g;
+}
+
+void bcgd(
+    double *restrict n_total, /* total pooled sample size */
+  double *restrict n_samples, /* vector samples sizes*/
+  double *restrict m, double *restrict d, /* number of samples and length of basis function*/
+  double *restrict model, double *restrict x, /*vector of sample values*/
+  double *restrict lambda, /* penalty value*/
+  double *restrict omega_0, double *restrict psi, double *restrict sigma, /* optimization hyperparameters*/
+  double *theta_0, /*input: initial value of parameter vector*/
+  double *threshold, double *max_iters, /*convergence criteria*/
+  double *opt_val, /*output: the minimized value of the negLDLGL function */
+  double *total_iters /*output: number of iterations to convergence*/){
+  //Create loop indices
+  unsigned long i;
+  
+  //Create vector of sample sizes
+  unsigned long * restrict n_samples_use;
+  n_samples_use = (unsigned long * restrict) malloc((size_t) (((unsigned long)*m + 1)*sizeof(unsigned long)));                                                             
+  if (n_samples_use == NULL) {
+    errMsg("malloc() allocation failure for m_samples_use!");
+  }
+  for (i = 0; i < ((unsigned long)*m + 1); ++i) {
+    n_samples_use[i] = (unsigned long)n_samples[i];
+  }
+  
+  // Setup X as matrix for computations
+  double *restrict* restrict x_mat;
+  if (x_mat == NULL) errMsg("malloc() allocation failure for x_mat!");
+  x_mat[0] = x;
+  for (i = 1; i < ((unsigned long)*m + 1); ++i){
+    x_mat[i] = x_mat[i-1] + n_samples_use[i - 1];
+  }
+  
+  // Assign initial values to parameter matrix
+  double *restrict* restrict par_mat;
+  par_mat = (double *restrict* restrict) malloc((size_t)
+                                                  (((unsigned long)*m)*sizeof(double*)));
+  if (par_mat == NULL) errMsg("malloc() allocation failure for par_mat!");
+  par_mat[0] = theta_0;
+  for (i = 1; i < (unsigned long)*m; ++i){
+    par_mat[i] = par_mat[i-1] + ((unsigned long)*d + 1);
+  }
+  
+  // Assign the proper basis function
+  void (*h_func)(double, double *restrict);
+  
+  switch ((unsigned long)*model)
+  {
+  case 1 :
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 1, h(x) = x, d must be 1!");
+    }
+    h_func = &h1x;
+    break;
+    
+  case 2 :
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 2, h(x) = log(x), d must be 1!");
+    }
+    h_func = &h1logx;
+    break;
+    
+  case 3 :
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 3, h(x) = sqrt(x), d must be 1!");
+    }
+    h_func = &h1sqrtx;
+    break;
+    
+  case 4 :
+    if ((unsigned long)*d != 1) {
+      errMsg("For model 4, h(x) = x^2, d must be 1!");
+    }
+    h_func = &h1xSquare;
+    break;
+    
+  case 5 :
+    if ((unsigned long)*d != 2) {
+      errMsg("For model 5 (Normal model), h(x) = (x, x^2), d must be 2!");
+    }
+    h_func = &h2Normal;
+    break;
+    
+  case 6 :
+    if ((unsigned long)*d != 2) {
+      errMsg("For model 6 (Gamma model), h(x) = (x, log(x)), d must be 2!");
+    }
+    h_func = &h2Gamma;
+    break;
+    
+  case 7 :
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 7, h(x) = (log(x), sqrt(x), x), d must be 3!");
+    }
+    h_func = &h3a;
+    break;
+    
+  case 8 :
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 8, h(x) = (log(x), sqrt(x), x^2), d must be 3!");
+    }
+    h_func = &h3b;
+    break;
+    
+  case 9 :
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 9, h(x) = (log(x), x, x^2), d must be 3!");
+    }
+    h_func = &h3c;
+    break;
+    
+  case 10 :
+    if ((unsigned long)*d != 3) {
+      errMsg("For model 10, h(x) = (sqrt(x), x, x^2), d must be 3!");
+    }
+    h_func = &h3d;
+    break;
+    
+  case 11 :
+    if ((unsigned long)*d != 4) {
+      errMsg("For model 11, h(x) = (log(x), sqrt(x), x, x^2), d must be 4!");
+    }
+    h_func = &h4a;
+    break;
+    
+  case 12 :
+    if ((unsigned long)*d != 5) {
+      errMsg("For model 11, h(x) = (log(x), log(x)^2, sqrt(x), x, x^2), d must be 5!");
+    }
+    h_func = &h5a;
+    break;
+    
+  default :
+    errMsg("'Model' must be an integer between 1 and 12 or a function of a single data point");
+  break;
+  }
+  
+  // Create outer loop index
+  unsigned long g;
+  
+  // Create initial value of function
+  double initial_ldlGL;
+  
+  // Create h_g
+  double h_g;
+  
+  // Begin outer loop
+  for(i = 1;i<=(unsigned long)*max_iters;i++){
+    // set initial value of the function
+    initial_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
+                               (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+    //Begin inner loop over groups
+    for(g=0;g<(unsigned long)*d+1;g++){
+      // Compute h_g
+      h_g = hG((unsigned long)*n_total, n_samples, (unsigned long)*m,
+               (unsigned long)*d, par_mat, h_func, x, g);
+    }
+  }
 }
 
 void logDualLGr(unsigned long n_total, /*inputs*/
