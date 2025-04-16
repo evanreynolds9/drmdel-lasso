@@ -850,6 +850,102 @@ double hG(unsigned long n_total, /*inputs*/
   return h_g;
 }
 
+double grad_Gt(unsigned long n_total, /*inputs*/
+  unsigned long * restrict n_samples, /*inputs*/
+  unsigned long m, unsigned long d, /*inputs*/
+  double *restrict* restrict par_mat, /*inputs*/
+  void (*h_func)(double, double * restrict), /*input*/
+  double *restrict* restrict x_mat, /*inputs*/
+  unsigned long g, /*inputs*/
+  double * restrict grad_G /*output*/)
+  /* Calculating the gradient for a particular group of entries
+   * parameter value.
+   * Inputs:
+   *   n_total -- total sample size;
+   *   n_samples -- a vector of length m+1 specifying the size of each sample;
+   *   m -- number of samples - 1;
+   *   d -- dimension of h(x); 
+   *   par_mat -- values of parameters (pointer matrix of dimension m by (d+1));
+   *   h_func -- the basis function of the DRM;
+   *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
+   *   g -- the lasso group
+   * Outputs:
+   *   grad_G -- a pointer array of dimension m; value of the gradient of the ldl (log dual empirical likelihood) at a given "par" value and at the group g indices.
+   */
+{
+  /* loop indices */
+  unsigned long i, j, k, l;
+  
+  double * restrict R;
+  R = (double * restrict) malloc((size_t) (m*sizeof(double)));
+  if (R == NULL) errMsg("malloc() allocation failure for R!");
+  for (i = 0; i < m; ++i) {
+    R[i] = 0.0;
+  }
+  
+  double * restrict H;
+  H = (double * restrict) malloc((size_t) ((d+1)*sizeof(double)));
+  if (H == NULL) errMsg("malloc() allocation failure for H!");
+  H[0] = 1.0;
+  for (i = 1; i < (d+1); ++i) {
+    H[i] = 0.0;
+  }
+  
+  double * restrict rho;
+  rho = (double * restrict) malloc((size_t) ((m+1)*sizeof(double)));
+  if (rho == NULL) errMsg("malloc() allocation failure for rho!");
+  for (i = 0; i < m+1; ++i) {
+    rho[i] = (double)n_samples[i]/(double)n_total;
+  }
+  
+  /*other variables*/
+  double S;
+  double tmp_double;
+  
+  /*initializing gG as safeguard*/
+  for (i = 0; i < m; ++i) {
+   grad_G[i] = 0.0;
+  }
+  
+  for (i = 0; i < m+1; ++i) {
+    
+    for (j = 0; j < n_samples[i]; ++j) {
+      
+      /*update H = (1, h^T)^T*/
+      (*h_func)(x_mat[i][j], H+1); /*update H*/
+      
+      R_val(m, d, H+1, par_mat, rho, R); /*update R*/
+      
+      /*calculating S*/
+      S = rho[0];
+      for (k = 0; k < m; ++k) {
+        S += R[k];
+      }
+      
+      /* calculating the gradient of ldl */
+      for (k = 0; k < m; ++k) {
+        
+        tmp_double = -R[k]/S;
+        
+        grad_G[k] += tmp_double * H[g];
+        
+      }
+      
+      if (i > 0) {
+        grad_G[i-1] = H[g] + grad_G[i-1];
+      }
+      
+    }
+    
+  }
+  
+  /* free arrays */
+  free((void *) R);
+  free((void *) H);
+  free((void *) rho);
+  
+}
+
 void bcgd(
     double *restrict n_total, /* total pooled sample size */
   double *restrict n_samples, /* vector samples sizes*/
@@ -1002,6 +1098,17 @@ void bcgd(
                                (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
     //Begin inner loop over groups
     for(g=0;g<(unsigned long)*d+1;g++){
+      // Compute g_gt
+      // Since we cannot return arrays in C, must setup as pointer
+      double *restrict grad_G = (double *restrict) malloc((size_t) m*sizeof(double));
+      if (n_samples_use == NULL) {
+        errMsg("malloc() allocation failure for grad_G!");
+      }
+      
+      grad_Gt((unsigned long)*n_total, n_samples, (unsigned long)*m, 
+              (unsigned long)*d, par_mat, h_func, x_mat, g, /*inputs*/
+              grad_G /*output*/)
+      
       // Compute h_g
       h_g = hG((unsigned long)*n_total, n_samples, (unsigned long)*m,
                (unsigned long)*d, par_mat, h_func, x, g);
