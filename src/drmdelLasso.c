@@ -765,6 +765,15 @@ double hG(unsigned long n_total, /*inputs*/
   /* loop indices */
   unsigned long i, k, l, kh, lh;
   
+  /* Create pointer array of length m for the diagonal of the group entries*/
+  /* initialize as 0 */
+  double * restrict HDiagG;
+  HDiagG = (double * restrict) malloc((size_t) (m*sizeof(double)));
+  if (HDiagG == NULL) errMsg("malloc() allocation failure for HDiagG!");
+  for (i = 0; i < m; ++i) {
+    HDiagG[i] = 0.0;
+  }
+  
   double * restrict R;
   R = (double * restrict) malloc((size_t) (m*sizeof(double)));
   if (R == NULL) errMsg("malloc() allocation failure for R!");
@@ -827,21 +836,33 @@ double hG(unsigned long n_total, /*inputs*/
       qaa[k][k] -= R[k]/S;
     }
     
-    // Initialize output as the group's first diagonal entry
-    h_g = (-1)*qaa[0][0]*H[g]*H[g];
-    
-    /*calculating the group's diagonal's of the negative hessian, and saving the maximum.*/
-    for (k = 1; k < m; ++k) {
-      if(h_g < (-1)*qaa[k][k]*H[g]*H[g]){
-        h_g = (-1)*qaa[k][k]*H[g]*H[g];
-      }
+    // Add relevant values to diagonal vector
+    for (k = 0; k < m; ++k) {
+      HDiagG[i] += qaa[k][k]*H[g]*H[g];
+      
     }
     
+  }
+  
+  // Initialize output as the negative of the group's first diagonal entry
+  h_g = (-1)*HDiagG[0];
+  
+  /*calculating the group's diagonal's of the negative hessian, and saving the maximum.*/
+  for (k = 1; k < m; ++k) {
+    if(h_g < (-1)*HDiagG[k]){
+      h_g = (-1)*HDiagG[k];
+    }
+  }
+  
+  /* bound h_g from below to ensure convergence */
+  if (h_g < 0.01){
+    h_g = 0.01;
   }
   
   /* free arrays */
   free((void *) R);
   free((void *) H);
+  free((void *) HDiagG);
   
   free((void *) qaa[0]);
   free((void *) qaa);
@@ -850,7 +871,7 @@ double hG(unsigned long n_total, /*inputs*/
   return h_g;
 }
 
-double grad_Gt(unsigned long n_total, /*inputs*/
+void grad_Gt(unsigned long n_total, /*inputs*/
   unsigned long * restrict n_samples, /*inputs*/
   unsigned long m, unsigned long d, /*inputs*/
   double *restrict* restrict par_mat, /*inputs*/
@@ -902,7 +923,7 @@ double grad_Gt(unsigned long n_total, /*inputs*/
   double S;
   double tmp_double;
   
-  /*initializing gG as safeguard*/
+  /*initializing grad_G as safeguard*/
   for (i = 0; i < m; ++i) {
    grad_G[i] = 0.0;
   }
@@ -958,7 +979,7 @@ void bcgd(
   double *opt_val, /*output: the minimized value of the negLDLGL function */
   double *total_iters /*output: number of iterations to convergence*/){
   //Create loop indices
-  unsigned long i;
+  unsigned long i, j;
   
   //Create vector of sample sizes
   unsigned long * restrict n_samples_use;
@@ -1101,17 +1122,37 @@ void bcgd(
       // Compute g_gt
       // Since we cannot return arrays in C, must setup as pointer
       double *restrict grad_G = (double *restrict) malloc((size_t) m*sizeof(double));
-      if (n_samples_use == NULL) {
+      if (grad_G == NULL) {
         errMsg("malloc() allocation failure for grad_G!");
       }
       
-      grad_Gt((unsigned long)*n_total, n_samples, (unsigned long)*m, 
+      grad_Gt((unsigned long)*n_total, n_samples_use, (unsigned long)*m, 
               (unsigned long)*d, par_mat, h_func, x_mat, g, /*inputs*/
-              grad_G /*output*/)
+              grad_G /*output*/);
       
       // Compute h_g
       h_g = hG((unsigned long)*n_total, n_samples, (unsigned long)*m,
-               (unsigned long)*d, par_mat, h_func, x, g);
+               (unsigned long)*d, par_mat, h_func, x, g)/*inputs*/;
+      
+      
+      // Initialize d_g, the direction vector
+      double *restrict d_g = (double *restrict) malloc((size_t) m*sizeof(double));
+      if (d_g == NULL) {
+        errMsg("malloc() allocation failure for d_g!");
+      }
+      
+      // Begin cases for d_g computation
+      
+      if(g==1){
+        // Loop through d_g and set values
+        for(j = 0; j<(unsigned long)*m; j++){
+          d_g[j] = (1/h_g) * grad_G[j];
+        }
+      } else{
+        // First we want to compute
+      }
+      
+      
     }
   }
 }
