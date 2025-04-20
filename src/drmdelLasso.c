@@ -763,7 +763,7 @@ double hG(unsigned long n_total, /*inputs*/
    */
 {
   /* loop indices */
-  unsigned long i, k, l, kh, lh;
+  unsigned long i, k, l;
   
   /* Create pointer array of length m for the diagonal of the group entries*/
   /* initialize as 0 */
@@ -857,6 +857,8 @@ double hG(unsigned long n_total, /*inputs*/
   /* bound h_g from below to ensure convergence */
   if (h_g < 0.01){
     h_g = 0.01;
+  } else if(h_g > 1000000000.0){ // bound from above as well
+    h_g = 1000000000.0;
   }
   
   /* free arrays */
@@ -1109,14 +1111,21 @@ void bcgd(
   // Create initial value of function
   double initial_ldlGL;
   
+  // Create final value of function
+  double final_ldlGL;
+  
   // Create h_g
   double h_g;
+  
+  // Set threshold for omega_t during loop
+  double omega_threshold = pow(10.0, -30.0);
   
   // Begin outer loop
   for(i = 1;i<=(unsigned long)*max_iters;i++){
     // set initial value of the function
     initial_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
                                (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+    
     //Begin inner loop over groups
     for(g=0;g<(unsigned long)*d+1;g++){
       // Compute g_gt
@@ -1143,15 +1152,64 @@ void bcgd(
       
       // Begin cases for d_g computation
       
-      if(g==1){
+      if(g==0){ // 0 is the group of intercepts
         // Loop through d_g and set values
         for(j = 0; j<(unsigned long)*m; j++){
-          d_g[j] = (1/h_g) * grad_G[j];
+          d_g[j] = (1.0/h_g) * grad_G[j];
         }
       } else{
-        // First we want to compute
+        // First we want to compute the norm of grad_g + h_g*theta_g
+        double norm = 0.0;
+        for(j = 0; j<(unsigned long)*m; j++){
+          // compute the vector entry
+          double vecEntry = grad_G[j] + h_g*par_mat[j][g];
+          norm += vecEntry * vecEntry;
+        }
+        norm = sqrt(norm);
+        if(norm <= *lambda){ // we set d equal to the negative of theta
+          for(j = 0; j<(unsigned long)*m; j++){
+            d_g[j] = (-1.0)*par_mat[j][g];
+          }
+        } else{
+          for(j = 0; j<(unsigned long)*m; j++){
+            d_g[j] = (1.0/h_g) * (grad_G[j] - *lambda * (grad_G[j] + h_g * par_mat[j][g]) / norm);
+          }
+        }
       }
       
+      // Now that we have set d_g, we want to perform the line search
+      // First we need to compute delta
+      double delta_t = 0.0;
+      // we need two temp sums to track the norms of theta_g and theta_g + d_g
+      double delta_norm_1 = 0.0;
+      double delta_norm_2 = 0.0;
+      for(j = 0; j<(unsigned long)*m; j++){
+        // first add -d_g*theta_g to delta
+        delta_t += (-1.0)*d_g[j]*grad_G[j];
+        // update the two norms
+        // compute sum of entries first
+        double delta_norm_1_entry = par_mat[j][g] + d_g[j];
+        delta_norm_1 += delta_norm_1_entry * delta_norm_1_entry;
+        delta_norm_2 += par_mat[j][g] * par_mat[j][g];
+      }
+      // Take root of norms
+      delta_norm_1 = sqrt(delta_norm_1);
+      delta_norm_2 = sqrt(delta_norm_2);
+      
+      // Add to delta_t
+      delta_t = delta_t + *lambda*(delta_norm_1 - delta_norm_2);
+      
+      // initialize omega_t
+      double omega_t = *omega_0;
+      
+      // compute the initial value of the objective function
+      double init_ldlGl_iter = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
+                                             (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+      
+      // do line search for omega_t
+      while (omega_t > omega_threshold){
+        
+      }
       
     }
   }
