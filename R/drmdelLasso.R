@@ -6,6 +6,7 @@
 # Lasso functionality added by Evan Reynolds, 2024
 # ##############################
 
+# NEXT SESSION: update this to access the newly created function
 bcgd = function(theta_0,x,n_total,n,m,basis_func,d,lambda,max_iter){
   group_indices_mat = matrix(1:(m*(d+1)),ncol=d+1,byrow=TRUE)#indices are in the groups column 
   theta_t = theta_0

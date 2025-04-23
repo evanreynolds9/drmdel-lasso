@@ -1105,7 +1105,7 @@ void bcgd(
   break;
   }
   
-  // Create outer loop index
+  // Create inner loop index for groups
   unsigned long g;
   
   // Create initial value of function
@@ -1123,12 +1123,16 @@ void bcgd(
   // Begin outer loop
   for(i = 1;i<=(unsigned long)*max_iters;i++){
     // set initial value of the function
-    initial_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
+    if(i == 1){
+      initial_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
                                (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+    } else {
+      initial_ldlGL = final_ldlGL; // can do this here because it will be equal to the most recent evaluation
+    }
     
     //Begin inner loop over groups
     for(g=0;g<(unsigned long)*d+1;g++){
-      // Compute g_gt
+      // Compute grad_gt
       // Since we cannot return arrays in C, must setup as pointer
       double *restrict grad_G = (double *restrict) malloc((size_t) m*sizeof(double));
       if (grad_G == NULL) {
@@ -1203,16 +1207,57 @@ void bcgd(
       double omega_t = *omega_0;
       
       // compute the initial value of the objective function
-      double init_ldlGl_iter = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
-                                             (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+      double init_ldlGl_iter;
+      if(g == 0){
+        init_ldlGl_iter = initial_ldlGL;
+      } else {
+        init_ldlGl_iter = final_ldlGL; // can do this here because it will be equal to the most recent evaluation
+      }
+      
+      // before starting line search, copy original values of gth column for efficient updates
+      double *restrict original_col_g = (double *restrict) malloc((size_t) m*sizeof(double));
+      if (original_col_g == NULL) {
+        errMsg("malloc() allocation failure for original_col_g!");
+      }
+      for (j = 0; j < (unsigned long)*m; ++j) {
+        original_col_g[j] = par_mat[j][g];
+      }
+      
       
       // do line search for omega_t
       while (omega_t > omega_threshold){
-        
+        // update par_mat
+        for(j = 0; j<(unsigned long)*m; j++){
+          par_mat[j][g] = original_col_g[j] + omega_t * d_g[j];
+        }
+        // update final_ldlGL
+        final_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
+                       (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+        // Compute difference
+        double sub = final_ldlGL - init_ldlGl_iter;
+        // Check if step size is optimal
+        if(sub <= delta_t * omega_t * (*sigma)){
+          break;
+        } else{
+          omega_t= omega_t* (*psi);
+        }
       }
       
+      // Free group loop pointers
+      free(grad_G);
+      free(d_g);
+      free(original_col_g);
+    }
+    // Check if alg has converged
+    if(fabs(final_ldlGL - initial_ldlGL) < *threshold){
+      *total_iters = i;
+      break;
     }
   }
+  // free other variables
+  free(n_samples_use);
+  free((void *) x_mat);
+  free((void *) par_mat);
 }
 
 void logDualLGr(unsigned long n_total, /*inputs*/
