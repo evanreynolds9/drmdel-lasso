@@ -976,8 +976,8 @@ void bcgd(
   double *restrict model, double *restrict x, /*vector of sample values*/
   double *restrict lambda, /* penalty value*/
   double *restrict omega_0, double *restrict psi, double *restrict sigma, /* optimization hyperparameters*/
-  double *theta_0, /*input: initial value of parameter vector*/
   double *threshold, double *max_iters, /*convergence criteria*/
+  double *theta_0, /*input/output: initial ->optimized value of parameter vector*/
   double *opt_val, /*output: the minimized value of the negLDLGL function */
   double *total_iters /*output: number of iterations to convergence*/){
   //Create loop indices
@@ -1252,8 +1252,12 @@ void bcgd(
     if(fabs(final_ldlGL - initial_ldlGL) < *threshold){
       *total_iters = i;
       break;
+    }else if(i == *max_iters){
+      *total_iters = i;
     }
   }
+  // Set the minimum value to return
+  *opt_val = final_ldlGL;
   // free other variables
   free(n_samples_use);
   free((void *) x_mat);

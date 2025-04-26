@@ -7,57 +7,29 @@
 # ##############################
 
 # NEXT SESSION: update this to access the newly created function
-bcgd = function(theta_0,x,n_total,n,m,basis_func,d,lambda,max_iter){
-  group_indices_mat = matrix(1:(m*(d+1)),ncol=d+1,byrow=TRUE)#indices are in the groups column 
-  theta_t = theta_0
-  delta = 0.5
-  sigma = 0.1
-  alpha_0 = 1
-  total_iters = max_iter
-  for(i in (1:max_iter)){
-    starting_f = del_lasso(theta=theta_t,x=x,n_total=n_total,n=n,m=m,basis_func = basis_func,d=d,lambda=lambda)
-    for(g in (1:(d+1))){
-      theta_gt = theta_t[group_indices_mat[,g]]
-      h_gt = -max(g_hess_diag(group_indices=group_indices_mat[,g],theta=theta_t,x=x,n_total=n_total,n=n,m=m,basis_func = basis_func,d=d),1e-2)
-      g_gt = g_grad(group_indices=group_indices_mat[,g],theta=theta_t,x=x,n_total=n_total,n=n,m=m,basis_func = basis_func,d=d)
-      if(g==1){
-        d_gt = (1/h_gt)*g_gt
-      }else if(l2norm((-1)*g_gt-h_gt*theta_gt) <= lambda){
-        d_gt = -theta_gt
-      }else{
-        d_gt = -(1/h_gt)*((-1)*g_gt-lambda*((-1)*g_gt-h_gt*theta_gt)/l2norm((-1)*g_gt-h_gt*theta_gt))
-      }
-      #check if d_gt is 0
-      if(l2norm(d_gt)==0){
-        next
-      }
-      #now update theta
-      #do line search with Armijo
-      trig_t = sum(d_gt*g_gt)+lambda*(l2norm(theta_gt+d_gt)-l2norm(theta_gt))
-      d_full = rep(0,length(theta_t))
-      d_full[group_indices_mat[,g]] = d_gt
-      alpha_t = alpha_0#alpha_t = min(alpha_t/delta,alpha_0) need to do this otherwise convergence will be poor
-      #find best alpha value
-      obj_tg_val = del_lasso(theta=theta_t,x=x,n_total=n_total,n=n,m=m,basis_func = basis_func,d=d,lambda=lambda)
-      while(TRUE){
-        obj_up_val = del_lasso(theta=(theta_t+alpha_t*d_full),x=x,n_total=n_total,n=n,m=m,basis_func = basis_func,d=d,lambda=lambda)
-        sub = obj_up_val-obj_tg_val
-        if(sub<=(alpha_t*sigma*trig_t)){
-          break
-        }else{
-          alpha_t = alpha_t*delta
-        }
-      }
-      theta_t = theta_t+alpha_t*d_full
-    }
-    ending_f = del_lasso(theta=theta_t,x=x,n_total=n_total,n=n,m=m,basis_func = basis_func,d=d,lambda=lambda)
-    #check for convergence
-    if(abs(ending_f-starting_f)<1e-6){
-      total_iters = i
-      break
-    }
-  }
-  return(list(obj=ending_f,iters=total_iters,par=theta_t))
+bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda,
+                max_iters = 1000, threshold = 1e-6, omega_0 = 1, psi = 0.5, sigma = 0.1){
+  # Optimize the drm group lasso objective function with bcgd,
+  # starting at a given value of parameter.
+  #
+  # double *restrict n_total, /* total pooled sample size */
+  # double *restrict n_samples, /* vector samples sizes*/
+  # double *restrict m, double *restrict d, /* number of samples and length of basis function*/
+  # double *restrict model, double *restrict x, /*vector of sample values*/
+  # double *restrict lambda, /* penalty value*/
+  # double *restrict omega_0, double *restrict psi, double *restrict sigma, /* optimization hyperparameters*/
+  # double *threshold, double *max_iters, /*convergence criteria*/
+  # double *theta_0, /*input: initial value of parameter vector*/
+  # double *opt_val, /*output: the minimized value of the negLDLGL function */
+  # double *total_iters /*output: number of iterations to convergence*/
+  
+  bcgdOutput = .C("bcgd", as.double(n_total), as.double(n_samples), as.double(m),
+                  as.double(d), as.double(model), as.double(x), as.double(lambda),
+                  as.double(omega_0), as.double(psi), as.double(sigma),
+                  as.double(threshold), as.double(max_iters),
+                  as.double(theta_0), as.double(0), as.double(0))
+  
+  return(list(obj = bcgdOutput$opt_val, iters = bcgdOutput$total_iters, par = theta_0))
 }
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {
