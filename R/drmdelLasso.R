@@ -27,9 +27,9 @@ bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda,
                   as.double(d), as.double(model), as.double(x), as.double(lambda),
                   as.double(omega_0), as.double(psi), as.double(sigma),
                   as.double(threshold), as.double(max_iters),
-                  as.double(theta_0), as.double(0), as.double(0))
+                  theta_f = as.double(theta_0), total_iters = as.double(0), opt_val = as.double(0))
   
-  return(list(obj = bcgdOutput$opt_val, iters = bcgdOutput$total_iters, par = theta_0))
+  return(list(obj = bcgdOutput$opt_val, iters = bcgdOutput$total_iters, par = bcgdOutput$theta_f))
 }
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {
