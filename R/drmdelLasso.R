@@ -323,20 +323,6 @@ negLDLHessianUf <- function(par, x, n_total, n_samples, m, basis_func, d) {
 
 }
 
-# Setup functions for BCGD
-
-# Function that extracts the sub-vector of the gradient for a group's indices
-g_grad = function(group_indices,theta,x,n_total,n,m,model,d){
-  return(negLDLGr(par=theta,x=x,n_total=n_total,
-                  n_samples=n,m=m,model = model,d=d)[group_indices])
-}
-
-# Function that extracts the sub-diagonal of the hessian for a group's indices
-g_hess_diag = function(group_indices,theta,x,n_total,n,m,model,d){
-  return(diag(negLDLHessian(par=theta,x=x,n_total=n_total,
-                              n_samples=n,m=m,model = model,d=d))[group_indices])
-}
-
 # User specified basis function version
 
 

@@ -11,40 +11,6 @@
 #include "basisFuncs.h"
 #include "utilities.h"
 
-/* Pseudo-code for bcgd in C
- * void bcgd(*initial parameter estimate* theta_0,
- *            *inputs for evaluation of negldl, gradient, hessian etc.* x, basis_func, lambda_g,*include other info (m,d,n)
- *            *hyperparameters for algorithm* omega_0, psi, sigma,
- *            *convergence criteria*, threshold)
- * {
- *  theta_i = theta_0 *set the initial value*
- *  while(not converged){
- *    unsigned long g; *iterate over the groups*
- *    for(g = 0; g <= d; g++){
- *      v_g; *set the descent direction vector*
- *      compute h_g;
- *      compute grad_g;
- *      if(g == 0){ *we are optimizing over the intercept components*
- *        v_g = grad_g/h_g
- *      } else { *we are optimizing over one of the groups of basis function coefficients
- *        prod_h_g_theta_g = h_g * theta_g *faster to compute now*
- *        sum_vec = grad_g + prod_h_g_theta_g
- *        if(||sum_vec|| <= lambda_g) {
- *          v_g = -theta_g
- *        } else{
- *          v_g = (1/h_g)*(grad_g - lambda_g*sum_vec/||sum_vec||))
- *        }
- *      }
- *      if(v_g != 0){*we need to do a line search to find the descent distance*
- *        compute delta_g;
- *        omega_0_g = min(omega_)
- *      }
- *    }
- *  }
- * }
- *
- */
-
 
 void lp_val(unsigned long m, unsigned long d, double * restrict h, /*inputs*/
     double *restrict* restrict par_mat, /*inputs*/
@@ -402,31 +368,6 @@ void logDualLWrapper(double * restrict n_total, /*inputs*/
 
 }
 
-// void bcgd ( double * restrict n_total, /*inputs*/
-//   double * restrict n_samples, /*inputs*/
-//   double * restrict m, double * restrict d,
-//   double * restrict model, double * restrict x, /*inputs*/
-//   double * restrict lambda, /*inputs*/
-//   double * restrict max_iter, /*inputs*/
-//   double * restrict par, /*outputs*/
-//   double * restrict ldlGL_val /*outputs*/)
-//   /* Computing the bcgd estimates of the negldl GL minimizer
-//   *   n_total -- total sample size;
-//   *   n_samples -- a vector of length m+1 specifying the size of each sample;
-//   *   m -- number of samples - 1;
-//   *   d -- dimension of h(x);
-//   *   h_func -- the basis function of the DRM;
-//   *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
-//   *   lambda -- penalty threshold for the group lasso penalty
-//   *   max_iter -- the maximum iterations for the algorithm
-//   * Outputs:
-//   *   par -- minimizer of the group lasso objective function;
-//   *   ldlGL_val -- minimum value of the group lasso objective function.
-//   */
-// {
-//   /* Create a matrix for the group indices*/
-// }
-
 double logDualLGL(unsigned long n_total, /*inputs*/
   unsigned long * restrict n_samples, /*inputs*/
   unsigned long m, unsigned long d, /*inputs*/
@@ -763,7 +704,7 @@ double hG(unsigned long n_total, /*inputs*/
    */
 {
   /* loop indices */
-  unsigned long i, k, l;
+  unsigned long i, k;
   
   /* Create pointer array of length m for the diagonal of the group entries*/
   /* initialize as 0 */
@@ -826,19 +767,12 @@ double hG(unsigned long n_total, /*inputs*/
     }
     
     for (k = 0; k < m; ++k) {
-      
-      for (l = 0; l < m; ++l) {
-        qaa[k][l] = R[k]*R[l]/(S*S);
-      }
-      
-    }
-    for (k = 0; k < m; ++k) {
-      qaa[k][k] -= R[k]/S;
+      qaa[k][k] = R[k] * R[k] / (S * S) - R[k] / S;
     }
     
     // Add relevant values to diagonal vector
     for (k = 0; k < m; ++k) {
-      HDiagG[i] += qaa[k][k]*H[g]*H[g];
+      HDiagG[k] += qaa[k][k]*H[g]*H[g];
       
     }
     
@@ -897,7 +831,7 @@ void grad_Gt(unsigned long n_total, /*inputs*/
    */
 {
   /* loop indices */
-  unsigned long i, j, k, l;
+  unsigned long i, j, k;
   
   double * restrict R;
   R = (double * restrict) malloc((size_t) (m*sizeof(double)));
@@ -977,7 +911,7 @@ void bcgd(
   double *restrict lambda, /* penalty value*/
   double *restrict omega_0, double *restrict psi, double *restrict sigma, /* optimization hyperparameters*/
   double *threshold, double *max_iters, /*convergence criteria*/
-  double *theta_0, /*input/output: initial ->optimized value of parameter vector*/
+  double *theta_0, /*input/output: initial -> optimized value of parameter vector*/
   double *opt_val, /*output: the minimized value of the negLDLGL function */
   double *total_iters /*output: number of iterations to convergence*/){
   //Create loop indices
@@ -995,6 +929,8 @@ void bcgd(
   
   // Setup X as matrix for computations
   double *restrict* restrict x_mat;
+  x_mat = (double *restrict* restrict) malloc((size_t) (((unsigned
+                                                    long)*m+1)*sizeof(double*)));
   if (x_mat == NULL) errMsg("malloc() allocation failure for x_mat!");
   x_mat[0] = x;
   for (i = 1; i < ((unsigned long)*m + 1); ++i){
@@ -1112,7 +1048,7 @@ void bcgd(
   double initial_ldlGL;
   
   // Create final value of function
-  double final_ldlGL;
+  double final_ldlGL = 0;
   
   // Create h_g
   double h_g;
@@ -1129,27 +1065,28 @@ void bcgd(
     } else {
       initial_ldlGL = final_ldlGL; // can do this here because it will be equal to the most recent evaluation
     }
-    
-    //Begin inner loop over groups
+
+    // Begin inner loop over groups
     for(g=0;g<(unsigned long)*d+1;g++){
+
       // Compute grad_gt
       // Since we cannot return arrays in C, must setup as pointer
-      double *restrict grad_G = (double *restrict) malloc((size_t) m*sizeof(double));
+      double *restrict grad_G = (double *restrict) malloc((size_t) (((unsigned long)*m)*sizeof(double)));
       if (grad_G == NULL) {
         errMsg("malloc() allocation failure for grad_G!");
       }
-      
-      grad_Gt((unsigned long)*n_total, n_samples_use, (unsigned long)*m, 
+
+      grad_Gt((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
               (unsigned long)*d, par_mat, h_func, x_mat, g, /*inputs*/
               grad_G /*output*/);
-      
+
       // Compute h_g
       h_g = hG((unsigned long)*n_total, n_samples, (unsigned long)*m,
                (unsigned long)*d, par_mat, h_func, x, g)/*inputs*/;
       
       
       // Initialize d_g, the direction vector
-      double *restrict d_g = (double *restrict) malloc((size_t) m*sizeof(double));
+      double *restrict d_g = (double *restrict) malloc((size_t) (((unsigned long)*m)*sizeof(double)));
       if (d_g == NULL) {
         errMsg("malloc() allocation failure for d_g!");
       }
@@ -1215,15 +1152,15 @@ void bcgd(
       }
       
       // before starting line search, copy original values of gth column for efficient updates
-      double *restrict original_col_g = (double *restrict) malloc((size_t) m*sizeof(double));
+      double *restrict original_col_g = (double *restrict) malloc((size_t) (((unsigned long)*m)*sizeof(double)));
       if (original_col_g == NULL) {
         errMsg("malloc() allocation failure for original_col_g!");
       }
       for (j = 0; j < (unsigned long)*m; ++j) {
         original_col_g[j] = par_mat[j][g];
       }
-      
-      
+
+
       // do line search for omega_t
       while (omega_t > omega_threshold){
         // update par_mat
@@ -1232,7 +1169,7 @@ void bcgd(
         }
         // update final_ldlGL
         final_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
-                       (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+                        (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
         // Compute difference
         double sub = final_ldlGL - init_ldlGl_iter;
         // Check if step size is optimal
@@ -1242,7 +1179,7 @@ void bcgd(
           omega_t= omega_t* (*psi);
         }
       }
-      
+
       // Free group loop pointers
       free(grad_G);
       free(d_g);

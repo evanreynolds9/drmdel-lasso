@@ -9,3 +9,6 @@ drmdel-lasso.Rproj
 
 # Ignore testing file
 /testing.R
+
+# Ignore .Renviron file
+.Renviron
