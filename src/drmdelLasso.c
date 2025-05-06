@@ -948,7 +948,7 @@ void bcgd(
   }
   
   // Assign the proper basis function
-  void (*h_func)(double, double *restrict);
+  void (*h_func)(double, double *restrict) = 0; // define to avoid warning
   
   switch ((unsigned long)*model)
   {

@@ -9,7 +9,7 @@ shared_lib = Sys.getenv("SHARED_LIB")
 # Build the shared library
 setwd("src")
 lib_str = paste0(shared_lib, ".dll")
-command_str = paste0("R CMD SHLIB drmdelLasso.c utilities.c basisFuncs.c -o ",lib_str)
+command_str = paste("R CMD SHLIB -o",lib_str,"drmdelLasso.c utilities.c basisFuncs.c")
 system(command_str)
 
 # Load the shared library
