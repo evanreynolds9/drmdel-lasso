@@ -53,29 +53,82 @@ gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, a
   # to be evaluated over in the solution path, a flag for whether to use the adaptive lasso (default is FALSE),
   # and the number of runs
   
+  # Abort process if any lambda's are not positive
+  if(sum(lambda_vals < 0) != 0){
+    print("Negative lambda values detected in solution path, aborting simulation.")
+    return(-1)
+  }
+  
   # Check if 0 is in lamdba_vals, add it if not
   if(!(0 %in% lambda_vals)){
     lambda_vals = c(0,lambda_vals)
   }
+  
+  # Sort lambda_vals
+  lambda_vals = sort(lambda_vals)
     
   # Create matrix to store simulation results, initialize with 0s
-  sim_results = matrix(0, nrow = length(lambda_vals)*runs, ncol = m*(d+1) + 6)
-
+  totalCols = m*(d+1) + 6
+  sim_results = matrix(0, nrow = length(lambda_vals)*runs, ncol = totalCols)
   # Begin simulation loop
   for(i in 1:runs){
     # compute the mele
-    mele_sol = drmdel(x=x, n_samples=n_samples, basis_func=basis_func)
+    mele_sol = drmdel(x=x, n_samples=n_samples, basis_func=model)
     mele = mele_sol$mele
     mele_obj = mele_sol$negldl
+    # Set names of matrix columns
+    if(i == 1){
+      colnames(sim_results) = c("Run", "Lambda", "Iters", "Obj", "AIC", "BIC",
+                                names(mele))
+    }
     
-    
-    for(lambda in lambda_vals){
+    # If adaptive is true, we set the inverse of the groupwise mele to be pen_G
+    if(adaptive){
+      theta_mat = matrix(mele, nrow = m, ncol = d+1, byrow = TRUE)
+      pen_g = 1/(sqrt(colSums(theta_mat^2)))
+    } else{
+      pen_g = rep(1,d+1)
+    }
+    # Set value for initial guess of theta to be the mele
+    init_theta = mele
+    # Iterate over lambda vals to populate matrix for each run
+    # The matrix columns are set as follows
+    # 1. The run
+    # 2. The lambda value
+    # 3. The number of iteration to convergence
+    # 4. The objective function value
+    # 5. the AIC value
+    # 6. The BIC value
+    # 7 to 6+m*(d+1): The parameter values
+    for(j in 1:length(lambda_vals)){
+      row_idx = (i-1)*length(lambda_vals) + j
+      lambda = lambda_vals[j]
+      sim_results[row_idx, 1] = i
+      sim_results[row_idx, 2] = lambda
       if(lambda == 0){ # Compute mele
-        
+        sim_results[row_idx, 3] = 0
+        sim_results[row_idx, 4] = mele_obj
+        aic_bic = aic_bic_drm(mele, x, n_total ,n_samples, m, model, d)
+        sim_results[row_idx, 5] = aic_bic[1]
+        sim_results[row_idx, 6] = aic_bic[2]
+        sim_results[row_idx, 7:totalCols] = mele
+      } else {
+        # Compute bcgd optimization
+        bcgdOpts = bcgd(init_theta, x ,n_total, n_samples, m, d, model, lambda, pen_g = pen_g)
+        sim_results[row_idx, 3] = bcgdOpts$iters
+        sim_results[row_idx, 4] = bcgdOpts$obj
+        aic_bic = aic_bic_drm(bcgdOpts$par, x, n_total ,n_samples, m, model, d)
+        sim_results[row_idx, 5] = aic_bic[1]
+        sim_results[row_idx, 6] = aic_bic[2]
+        sim_results[row_idx, 7:totalCols] = bcgdOpts$par
+        if(j < length(lambda_vals)){
+          init_theta = bcgdOpts$par
+        }
       }
     }
   }
-  
+  # Return matrix
+  return(sim_results)
 }
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {
