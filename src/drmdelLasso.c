@@ -374,7 +374,7 @@ double logDualLGL(unsigned long n_total, /*inputs*/
   double *restrict* restrict par_mat, /*inputs*/
   void (*h_func)(double, double * restrict), /*input*/
   double *restrict* restrict x_mat /*inputs*/,
-  double lambda /*inputs*/)
+  double lambda, double * restrict pen_g /*inputs*/)
   /* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
    * Inputs:
    *   n_total -- total sample size;
@@ -385,6 +385,7 @@ double logDualLGL(unsigned long n_total, /*inputs*/
    *   h_func -- the basis function of the DRM;
    *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
    *   lambda -- penalty threshold for the group lasso penalty
+   *    pen_g -- a pointer vector of length d for the group specific penalty
    * Outputs:
    *   ldlGL_val -- value of group lasso objective function at a given "par" value.
    */
@@ -454,7 +455,7 @@ double logDualLGL(unsigned long n_total, /*inputs*/
   
   /*Add pen to ldlGL_val*/
   for (i=0; i<d; ++i){
-    ldlGL_val -= lambda*sqrt(l2[i]);/*subtracting because we will return the negative*/
+    ldlGL_val -= lambda*pen_g[i]*sqrt(l2[i]);/*subtracting because we will return the negative*/
   }
   
   /* free arrays */
@@ -472,7 +473,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
      double * restrict m, double * restrict d,
      double * restrict par, /*inputs*/
      double * restrict model, double * restrict x, /*inputs*/
-     double * restrict lambda, /*inputs*/
+     double * restrict lambda, double * restrict pen_g, /*inputs*/
      double * restrict ldlGL_val /*output*/)
   /* Calculating objective group lasso DEL function at a given parameter value.
    * Inputs:
@@ -484,6 +485,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
    *   h_func -- the basis function of the DRM;
    *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
    *   lambda -- a positive threshold for the group lasso penalty.
+   *   pen_g -- a pointer vector of length d for the group specific penalty
    * Outputs:
    *   ldlGL_val -- value of the objective function at a given "par" value.
    */
@@ -533,7 +535,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 1,
                         par_mat, &h1x, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 2 :
@@ -545,7 +547,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 1,
                         par_mat, &h1logx, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 3 :
@@ -557,7 +559,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 1,
                         par_mat, &h1sqrtx, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 4 :
@@ -569,7 +571,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 1,
                         par_mat, &h1xSquare, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 5 :
@@ -581,7 +583,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 2,
                         par_mat, &h2Normal, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 6 :
@@ -593,7 +595,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 2,
                         par_mat, &h2Gamma, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 7 :
@@ -605,7 +607,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 3,
                         par_mat, &h3a, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 8 :
@@ -617,7 +619,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 3,
                         par_mat, &h3b, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 9 :
@@ -629,7 +631,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 3,
                         par_mat, &h3c, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 10 :
@@ -641,7 +643,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 3,
                         par_mat, &h3d, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 11 :
@@ -653,7 +655,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 4,
                         par_mat, &h4a, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   case 12 :
@@ -665,7 +667,7 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
                         /*n_samples_use, (unsigned long)*m, (unsigned long)*d,*/
                         n_samples_use, (unsigned long)*m, 5,
                         par_mat, &h5a, x_mat,
-                        *lambda);
+                        *lambda, pen_g);
     break;
     
   default :
@@ -908,12 +910,12 @@ void bcgd(
   double *restrict n_samples, /* vector samples sizes*/
   double *restrict m, double *restrict d, /* number of samples and length of basis function*/
   double *restrict model, double *restrict x, /*vector of sample values*/
-  double *restrict lambda, /* penalty value*/
+  double *restrict lambda, double *restrict pen_g, /* penalty values*/
   double *restrict omega_0, double *restrict psi, double *restrict sigma, /* optimization hyperparameters*/
-  double *threshold, double *max_iters, /*convergence criteria*/
-  double *theta_0, /*input/output: initial -> optimized value of parameter vector*/
-  double *opt_val, /*output: the minimized value of the negLDLGL function */
-  double *total_iters /*output: number of iterations to convergence*/){
+  double *restrict threshold, double *restrict max_iters, /*convergence criteria*/
+  double *restrict theta_0, /*input/output: initial -> optimized value of parameter vector*/
+  double *restrict opt_val, /*output: the minimized value of the negLDLGL function */
+  double *restrict total_iters /*output: number of iterations to convergence*/){
   //Create loop indices
   unsigned long i, j;
   
@@ -1061,7 +1063,7 @@ void bcgd(
     // set initial value of the function
     if(i == 1){
       initial_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
-                               (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+                               (unsigned long)*d, par_mat, h_func, x_mat, *lambda, pen_g);
     } else {
       initial_ldlGL = final_ldlGL; // can do this here because it will be equal to the most recent evaluation
     }
@@ -1169,7 +1171,7 @@ void bcgd(
         }
         // update final_ldlGL
         final_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
-                        (unsigned long)*d, par_mat, h_func, x_mat, *lambda);
+                        (unsigned long)*d, par_mat, h_func, x_mat, *lambda, pen_g);
         // Compute difference
         double sub = final_ldlGL - init_ldlGl_iter;
         // Check if step size is optimal

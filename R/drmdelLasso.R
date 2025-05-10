@@ -6,8 +6,7 @@
 # Lasso functionality added by Evan Reynolds, 2024
 # ##############################
 
-# NEXT SESSION: update this to access the newly created function
-bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda,
+bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda, pen_g = rep(1,d),
                 max_iters = 1000, threshold = 1e-6, omega_0 = 1, psi = 0.5, sigma = 0.1){
   # Optimize the drm group lasso objective function with bcgd,
   # starting at a given value of parameter.
@@ -16,20 +15,67 @@ bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda,
   # double *restrict n_samples, /* vector samples sizes*/
   # double *restrict m, double *restrict d, /* number of samples and length of basis function*/
   # double *restrict model, double *restrict x, /*vector of sample values*/
-  # double *restrict lambda, /* penalty value*/
+  # double *restrict lambda, double *restrict pen_g, /* penalty values*/
   # double *restrict omega_0, double *restrict psi, double *restrict sigma, /* optimization hyperparameters*/
   # double *threshold, double *max_iters, /*convergence criteria*/
   # double *theta_0, /*input: initial value of parameter vector*/
   # double *opt_val, /*output: the minimized value of the negLDLGL function */
   # double *total_iters /*output: number of iterations to convergence*/
   
+  
   bcgdOutput = .C("bcgd", as.double(n_total), as.double(n_samples), as.double(m),
-                  as.double(d), as.double(model), as.double(x), as.double(lambda),
+                  as.double(d), as.double(model), as.double(x), as.double(lambda), as.double(pen_g),
                   as.double(omega_0), as.double(psi), as.double(sigma),
                   as.double(threshold), as.double(max_iters),
                   theta_f = as.double(theta_0), total_iters = as.double(0), opt_val = as.double(0))
   
   return(list(obj = bcgdOutput$opt_val, iters = bcgdOutput$total_iters, par = bcgdOutput$theta_f))
+}
+
+# Create aic/bic function
+aic_bic_drm = function(theta, x, n_total ,n, m, basis_func, d){
+  # Compute the AIC and BIC of a given DRM parameter estimate
+  negLDLVal = negLGL(theta, x, n_total, n_samples, m, model, d)
+  theta_mat = matrix(theta, nrow = m, ncol = d+1, byrow = TRUE)
+  group_sums = colSums(theta_mat^2)
+  # Count the number of non-zero groups for the penalty
+  pen = sum(group_sums>0)*m
+  return(c(negLDLVal+2*pen,negLDLVal+log(n_total)*pen))
+}
+
+gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, adaptive = FALSE, runs = 1){
+  # Generate a solution path(s) for given data
+  # Can compute multiple solution paths to accommodate simulation studies
+  # By default, the solution path will always
+  # 1. Use the default hyper-parameters of the bcgd function
+  # 2. Start with the initial parameter as the MELE, which will also be the first value in the solution path
+  # The arguments are the usual drmdel arguments, except for lambda_vals which should be the grid of lambda values
+  # to be evaluated over in the solution path, a flag for whether to use the adaptive lasso (default is FALSE),
+  # and the number of runs
+  
+  # Check if 0 is in lamdba_vals, add it if not
+  if(!(0 %in% lambda_vals)){
+    lambda_vals = c(0,lambda_vals)
+  }
+    
+  # Create matrix to store simulation results, initialize with 0s
+  sim_results = matrix(0, nrow = length(lambda_vals)*runs, ncol = m*(d+1) + 6)
+
+  # Begin simulation loop
+  for(i in 1:runs){
+    # compute the mele
+    mele_sol = drmdel(x=x, n_samples=n_samples, basis_func=basis_func)
+    mele = mele_sol$mele
+    mele_obj = mele_sol$negldl
+    
+    
+    for(lambda in lambda_vals){
+      if(lambda == 0){ # Compute mele
+        
+      }
+    }
+  }
+  
 }
 
 negLDL <- function(par, x, n_total, n_samples, m, model, d) {
@@ -53,7 +99,7 @@ negLDL <- function(par, x, n_total, n_samples, m, model, d) {
 
 }
 
-negLDLGL <- function(par, x, n_total, n_samples, m, model, d, lambda) {
+negLDLGL <- function(par, x, n_total, n_samples, m, model, d, lambda, pen_g = rep(1,d)) {
   # Calculate negative log dual empirical likelihood for a
   # given value of parameter, with a GL penalty applied across
   # the coefficients of each basis function term and a specified
@@ -65,13 +111,13 @@ negLDLGL <- function(par, x, n_total, n_samples, m, model, d, lambda) {
   #     double * restrict m, double * restrict d,
   #     double * restrict par, /*inputs*/
   #     double * restrict model, double * restrict x, /*inputs*/
-  #     double * restrict lambda, /*inputs*/
+  #     double * restrict lambda, double * restrict pen_g, /*inputs*/
   #     double * restrict ldl_val /*output*/)
   
   logDL <- .C("logDualLGLWrapper", as.double(n_total),
               as.double(n_samples), as.double(m), as.double(d),
               as.double(par), as.double(model), as.double(x), 
-              as.double(lambda),
+              as.double(lambda), as.double(pen_g),
               ldlGL_val=double(1))
   
   return(-logDL$ldlGL_val)
