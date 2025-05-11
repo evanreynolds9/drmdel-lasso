@@ -43,15 +43,14 @@ aic_bic_drm = function(theta, x, n_total ,n, m, basis_func, d){
   return(c(negLDLVal+2*pen,negLDLVal+log(n_total)*pen))
 }
 
-gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, adaptive = FALSE, runs = 1){
-  # Generate a solution path(s) for given data
+gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, adaptive = FALSE){
+  # Generate a solution path for given data
   # Can compute multiple solution paths to accommodate simulation studies
   # By default, the solution path will always
   # 1. Use the default hyper-parameters of the bcgd function
   # 2. Start with the initial parameter as the MELE, which will also be the first value in the solution path
   # The arguments are the usual drmdel arguments, except for lambda_vals which should be the grid of lambda values
-  # to be evaluated over in the solution path, a flag for whether to use the adaptive lasso (default is FALSE),
-  # and the number of runs
+  # to be evaluated over in the solution path, and a flag for whether to use the adaptive lasso (default is FALSE)
   
   # Abort process if any lambda's are not positive
   if(sum(lambda_vals < 0) != 0){
@@ -68,62 +67,54 @@ gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, a
   lambda_vals = sort(lambda_vals)
     
   # Create matrix to store simulation results, initialize with 0s
-  totalCols = m*(d+1) + 6
-  sim_results = matrix(0, nrow = length(lambda_vals)*runs, ncol = totalCols)
-  # Begin simulation loop
-  for(i in 1:runs){
-    # compute the mele
-    mele_sol = drmdel(x=x, n_samples=n_samples, basis_func=model)
-    mele = mele_sol$mele
-    mele_obj = mele_sol$negldl
-    # Set names of matrix columns
-    if(i == 1){
-      colnames(sim_results) = c("Run", "Lambda", "Iters", "Obj", "AIC", "BIC",
+  totalCols = m*(d+1) + 5
+  sim_results = matrix(0, nrow = length(lambda_vals), ncol = totalCols)
+  # compute the mele
+  mele_sol = drmdel(x=x, n_samples=n_samples, basis_func=model)
+  mele = mele_sol$mele
+  mele_obj = mele_sol$negldl
+  # Set names of matrix columns
+  colnames(sim_results) = c("Lambda", "Iters", "Obj", "AIC", "BIC",
                                 names(mele))
-    }
     
-    # If adaptive is true, we set the inverse of the groupwise mele to be pen_G
-    if(adaptive){
-      theta_mat = matrix(mele, nrow = m, ncol = d+1, byrow = TRUE)
-      pen_g = 1/(sqrt(colSums(theta_mat^2)))
-    } else{
-      pen_g = rep(1,d+1)
-    }
-    # Set value for initial guess of theta to be the mele
-    init_theta = mele
-    # Iterate over lambda vals to populate matrix for each run
-    # The matrix columns are set as follows
-    # 1. The run
-    # 2. The lambda value
-    # 3. The number of iteration to convergence
-    # 4. The objective function value
-    # 5. the AIC value
-    # 6. The BIC value
-    # 7 to 6+m*(d+1): The parameter values
-    for(j in 1:length(lambda_vals)){
-      row_idx = (i-1)*length(lambda_vals) + j
-      lambda = lambda_vals[j]
-      sim_results[row_idx, 1] = i
-      sim_results[row_idx, 2] = lambda
-      if(lambda == 0){ # Compute mele
-        sim_results[row_idx, 3] = 0
-        sim_results[row_idx, 4] = mele_obj
-        aic_bic = aic_bic_drm(mele, x, n_total ,n_samples, m, model, d)
-        sim_results[row_idx, 5] = aic_bic[1]
-        sim_results[row_idx, 6] = aic_bic[2]
-        sim_results[row_idx, 7:totalCols] = mele
-      } else {
-        # Compute bcgd optimization
-        bcgdOpts = bcgd(init_theta, x ,n_total, n_samples, m, d, model, lambda, pen_g = pen_g)
-        sim_results[row_idx, 3] = bcgdOpts$iters
-        sim_results[row_idx, 4] = bcgdOpts$obj
-        aic_bic = aic_bic_drm(bcgdOpts$par, x, n_total ,n_samples, m, model, d)
-        sim_results[row_idx, 5] = aic_bic[1]
-        sim_results[row_idx, 6] = aic_bic[2]
-        sim_results[row_idx, 7:totalCols] = bcgdOpts$par
-        if(j < length(lambda_vals)){
-          init_theta = bcgdOpts$par
-        }
+  # If adaptive is true, we set the inverse of the groupwise mele to be pen_G
+  if(adaptive){
+    theta_mat = matrix(mele, nrow = m, ncol = d+1, byrow = TRUE)
+    pen_g = 1/(sqrt(colSums(theta_mat^2)))
+  } else{
+    pen_g = rep(1,d+1)
+  }
+  # Set value for initial guess of theta to be the mele
+  init_theta = mele
+  # Iterate over lambda vals to populate matrix for each run
+  # The matrix columns are set as follows
+  # 1. The lambda value
+  # 2. The number of iteration to convergence
+  # 3. The objective function value
+  # 4. the AIC value
+  # 5. The BIC value
+  # 6 to 6+m*(d+1): The parameter values
+  for(i in 1:length(lambda_vals)){
+    lambda = lambda_vals[i]
+    sim_results[i, 1] = lambda
+    if(lambda == 0){ # Compute mele
+      sim_results[i, 2] = 0
+      sim_results[i, 3] = mele_obj
+      aic_bic = aic_bic_drm(mele, x, n_total ,n_samples, m, model, d)
+      sim_results[i, 4] = aic_bic[1]
+      sim_results[i, 5] = aic_bic[2]
+      sim_results[i, 6:totalCols] = mele
+    } else {
+      # Compute bcgd optimization
+      bcgdOpts = bcgd(init_theta, x ,n_total, n_samples, m, d, model, lambda, pen_g = pen_g)
+      sim_results[row_idx, 2] = bcgdOpts$iters
+      sim_results[row_idx, 3] = bcgdOpts$obj
+      aic_bic = aic_bic_drm(bcgdOpts$par, x, n_total ,n_samples, m, model, d)
+      sim_results[row_idx, 4] = aic_bic[1]
+      sim_results[row_idx, 5] = aic_bic[2]
+      sim_results[row_idx, 6:totalCols] = bcgdOpts$par
+      if(j < length(lambda_vals)){
+        init_theta = bcgdOpts$par
       }
     }
   }
