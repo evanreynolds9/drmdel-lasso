@@ -1109,13 +1109,13 @@ void bcgd(
           norm += vecEntry * vecEntry;
         }
         norm = sqrt(norm);
-        if(norm <= *lambda){ // we set d equal to the negative of theta
+        if(norm <= *lambda * pen_g[g]){ // we set d equal to the negative of theta
           for(j = 0; j<(unsigned long)*m; j++){
             d_g[j] = (-1.0)*par_mat[j][g];
           }
         } else{
           for(j = 0; j<(unsigned long)*m; j++){
-            d_g[j] = (1.0/h_g) * (grad_G[j] - *lambda * (grad_G[j] + h_g * par_mat[j][g]) / norm);
+            d_g[j] = (1.0/h_g) * (grad_G[j] - *lambda * pen_g[g] * (grad_G[j] + h_g * par_mat[j][g]) / norm);
           }
         }
       }
@@ -1140,7 +1140,7 @@ void bcgd(
       delta_norm_2 = sqrt(delta_norm_2);
       
       // Add to delta_t
-      delta_t = delta_t + *lambda*(delta_norm_1 - delta_norm_2);
+      delta_t = delta_t + *lambda * pen_g[g] * (delta_norm_1 - delta_norm_2);
       
       // initialize omega_t
       double omega_t = *omega_0;
