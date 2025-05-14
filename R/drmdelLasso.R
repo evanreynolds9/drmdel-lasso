@@ -27,15 +27,15 @@ bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda, pen_g = rep
                   as.double(d), as.double(model), as.double(x), as.double(lambda), as.double(pen_g),
                   as.double(omega_0), as.double(psi), as.double(sigma),
                   as.double(threshold), as.double(max_iters),
-                  theta_f = as.double(theta_0), total_iters = as.double(0), opt_val = as.double(0))
+                  theta_f = as.double(theta_0), opt_val = as.double(0), total_iters = as.double(0))
   
   return(list(obj = bcgdOutput$opt_val, iters = bcgdOutput$total_iters, par = bcgdOutput$theta_f))
 }
 
 # Create aic/bic function
-aic_bic_drm = function(theta, x, n_total ,n, m, basis_func, d){
+aic_bic_drm = function(theta, x, n_total ,n_samples, m, basis_func, d){
   # Compute the AIC and BIC of a given DRM parameter estimate
-  negLDLVal = negLGL(theta, x, n_total, n_samples, m, model, d)
+  negLDLVal = negLDL(theta, x, n_total, n_samples, m, model, d)
   theta_mat = matrix(theta, nrow = m, ncol = d+1, byrow = TRUE)
   group_sums = colSums(theta_mat^2)
   # Count the number of non-zero groups for the penalty
@@ -43,32 +43,32 @@ aic_bic_drm = function(theta, x, n_total ,n, m, basis_func, d){
   return(c(negLDLVal+2*pen,negLDLVal+log(n_total)*pen))
 }
 
-gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, adaptive = FALSE){
+solutionPath = function(x ,n_total, n_samples, m, d, model, lambdaVals, adaptive = FALSE){
   # Generate a solution path for given data
   # Can compute multiple solution paths to accommodate simulation studies
   # By default, the solution path will always
   # 1. Use the default hyper-parameters of the bcgd function
   # 2. Start with the initial parameter as the MELE, which will also be the first value in the solution path
-  # The arguments are the usual drmdel arguments, except for lambda_vals which should be the grid of lambda values
+  # The arguments are the usual drmdel arguments, except for lambdaVals which should be the grid of lambda values
   # to be evaluated over in the solution path, and a flag for whether to use the adaptive lasso (default is FALSE)
   
   # Abort process if any lambda's are not positive
-  if(sum(lambda_vals < 0) != 0){
+  if(sum(lambdaVals < 0) != 0){
     print("Negative lambda values detected in solution path, aborting simulation.")
     return(-1)
   }
   
   # Check if 0 is in lamdba_vals, add it if not
-  if(!(0 %in% lambda_vals)){
-    lambda_vals = c(0,lambda_vals)
+  if(!(0 %in% lambdaVals)){
+    lambdaVals = c(0,lambdaVals)
   }
   
-  # Sort lambda_vals
-  lambda_vals = sort(lambda_vals)
+  # Sort lambdaVals
+  lambdaVals = sort(lambdaVals)
     
   # Create matrix to store simulation results, initialize with 0s
   totalCols = m*(d+1) + 5
-  sim_results = matrix(0, nrow = length(lambda_vals), ncol = totalCols)
+  sim_results = matrix(0, nrow = length(lambdaVals), ncol = totalCols)
   # compute the mele
   mele_sol = drmdel(x=x, n_samples=n_samples, basis_func=model)
   mele = mele_sol$mele
@@ -94,8 +94,8 @@ gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, a
   # 4. the AIC value
   # 5. The BIC value
   # 6 to 6+m*(d+1): The parameter values
-  for(i in 1:length(lambda_vals)){
-    lambda = lambda_vals[i]
+  for(i in 1:length(lambdaVals)){
+    lambda = lambdaVals[i]
     sim_results[i, 1] = lambda
     if(lambda == 0){ # Compute mele
       sim_results[i, 2] = 0
@@ -107,13 +107,13 @@ gen_solution_paths = function(x ,n_total, n_samples, m, d, model, lambda_vals, a
     } else {
       # Compute bcgd optimization
       bcgdOpts = bcgd(init_theta, x ,n_total, n_samples, m, d, model, lambda, pen_g = pen_g)
-      sim_results[row_idx, 2] = bcgdOpts$iters
-      sim_results[row_idx, 3] = bcgdOpts$obj
+      sim_results[i, 2] = bcgdOpts$iters
+      sim_results[i, 3] = bcgdOpts$obj
       aic_bic = aic_bic_drm(bcgdOpts$par, x, n_total ,n_samples, m, model, d)
-      sim_results[row_idx, 4] = aic_bic[1]
-      sim_results[row_idx, 5] = aic_bic[2]
-      sim_results[row_idx, 6:totalCols] = bcgdOpts$par
-      if(j < length(lambda_vals)){
+      sim_results[i, 4] = aic_bic[1]
+      sim_results[i, 5] = aic_bic[2]
+      sim_results[i, 6:totalCols] = bcgdOpts$par
+      if(i < length(lambdaVals)){
         init_theta = bcgdOpts$par
       }
     }
