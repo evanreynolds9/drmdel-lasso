@@ -683,12 +683,104 @@ void logDualLGLWrapper( double * restrict n_total, /*inputs*/
   
 }
 
+double logDualLGLCache(unsigned long n_total, /*inputs*/
+  unsigned long * restrict n_samples, /*inputs*/
+  unsigned long m, unsigned long d, /*inputs*/
+  double *restrict* restrict par_mat, /*inputs*/
+  double *restrict* restrict* restrict x_mat_H /*inputs*/,
+  double lambda, double * restrict pen_g /*inputs*/)
+  /* Calculating log dual empirical likelihood (+ n \log n) at a given parameter value.
+   * This function assumes the values of the basis function have been cached.
+   * Inputs:
+   *   n_total -- total sample size;
+   *   n_samples -- a vector of length m+1 specifying the size of each sample;
+   *   m -- number of samples - 1;
+   *   d -- dimension of h(x); 
+   *   par_mat -- values of parameters (pointer matrix of dimension m by (d+1));
+   *   x_matH -- 3-D pointer array of data, the first two dimensions are organized as x_0, x_1, ..., x_m,
+   *    with the third dimension being the cached value of the basis function at x_ij
+   *   lambda -- penalty threshold for the group lasso penalty
+   *    pen_g -- a pointer vector of length d for the group specific penalty
+   * Outputs:
+   *   ldlGL_val -- value of group lasso objective function at a given "par" value.
+   */
+{
+  /* loop indices */
+  unsigned long i, j, k;
+  
+  double * restrict lp;
+  lp = (double * restrict) malloc((size_t) (m*sizeof(double)));
+  if (lp == NULL) errMsg("malloc() allocation failure for lp!");
+  for (i = 0; i < m; ++i) {
+    lp[i] = 0;
+  }
+  
+  /* Create vector for l2 norms in penalty*/
+  double * restrict l2;
+  l2 = (double * restrict) malloc((size_t) (d*sizeof(double)));
+  if (l2 == NULL) errMsg("malloc() allocation failure for l2!");
+  for (i = 0; i < d; ++i) {
+    l2[i] = 0;
+  }
+  
+  double * restrict rho;
+  rho = (double * restrict) malloc((size_t) ((m+1)*sizeof(double)));
+  if (rho == NULL) errMsg("malloc() allocation failure for rho!");
+  for (i = 0; i < m+1; ++i) {
+    rho[i] = (double)n_samples[i]/(double)n_total;
+  }
+  
+  
+  /*other variables*/
+  double S;
+  
+  /*define output*/
+  double ldlGL_val;
+  ldlGL_val = 0.0;
+  
+  for (i = 0; i < m+1; ++i) {
+    for (j = 0; j < n_samples[i]; ++j) {
+  
+      lp_val(m, d, x_mat_H[i][j], par_mat, lp); /*update lp*/
+  
+      /* calculating q_i */
+      S = rho[0];
+      for (k = 0; k < m; ++k) {
+        S += rho[k+1] * exp(lp[k]);
+      }
+  
+      if (i == 0) {
+        ldlGL_val = ldlGL_val - log(S);  
+      } else {
+        ldlGL_val = ldlGL_val + lp[i-1] - log(S);
+      }
+  
+    }
+    if (i==0){
+      continue;
+    }
+    pen_val(d, par_mat[i-1], l2);/*update l2*/
+  }
+  
+  /*Add pen to ldlGL_val*/
+  for (i=0; i<d; ++i){
+    ldlGL_val -= lambda*pen_g[i]*sqrt(l2[i]);/*subtracting because we will return the negative*/
+  }
+  
+  /* free arrays */
+  free((void *) lp);
+  free((void *) rho);
+  free((void *) l2);
+  
+  return ldlGL_val;
+  
+}
+
 double hG(unsigned long n_total, /*inputs*/
   double * restrict n_samples, /*inputs*/
   unsigned long m, unsigned long d, /*inputs*/
   double *restrict* restrict par_mat, /*inputs*/
-  void (*h_func)(double, double * restrict), /*input*/
-  double * restrict x, /*inputs*/
+  double *restrict* restrict* restrict x_mat_H /*inputs*/,
   unsigned long g /*inputs*/)
   /* Calculate the maximum diagonal of the negative Hessian for a given group.
    * Inputs:
@@ -698,15 +790,15 @@ double hG(unsigned long n_total, /*inputs*/
    *   m -- number of samples - 1;
    *   d -- dimension of h(x); 
    *   par_mat -- values of parameters (pointer matrix of dimension m by (d+1));
-   *   h_func -- the basis function of the DRM;
-   *   x -- data, a long vector in order of as x_0, x_1, ..., x_m.
+   *   x_matH -- 3-D pointer array of data, the first two dimensions are organized as x_0, x_1, ..., x_m,
+   *    with the third dimension being the cached value of the basis function at x_ij
    *   g -- the lasso group
    * Outputs:
    *   h_g -- the maximum of the diagonal along the group's entries.
    */
 {
   /* loop indices */
-  unsigned long i, k;
+  unsigned long i, j, k;
   
   /* Create pointer array of length m for the diagonal of the group entries*/
   /* initialize as 0 */
@@ -722,14 +814,6 @@ double hG(unsigned long n_total, /*inputs*/
   if (R == NULL) errMsg("malloc() allocation failure for R!");
   for (i = 0; i < m; ++i) {
     R[i] = 0.0;
-  }
-  
-  double * restrict H;
-  H = (double * restrict) malloc((size_t) ((d+1)*sizeof(double)));
-  if (H == NULL) errMsg("malloc() allocation failure for H!");
-  H[0] = 1.0;
-  for (i = 1; i < (d+1); ++i) {
-    H[i] = 0.0;
   }
   
   /*qaa matrix*/
@@ -755,29 +839,31 @@ double hG(unsigned long n_total, /*inputs*/
   /*output variable*/
   double h_g;
   
-  for (i = 0; i < n_total; ++i) {
+  for (i = 0; i < m+1; ++i) {
+    for (j = 0; j < n_samples[i]; ++j) {
     
-    /*update H = (1, h^T)^T*/
-    (*h_func)(x[i], H+1); /*update H*/
+      R_val(m, d, x_mat_H[i][j], par_mat, n_samples, R); /*update R*/
     
-    R_val(m, d, H+1, par_mat, n_samples, R); /*update R*/
+      /*calculating S*/
+      S = n_samples[0];
+      for (k = 0; k < m; ++k) {
+        S += R[k];
+      }
     
-    /*calculating S*/
-    S = n_samples[0];
-    for (k = 0; k < m; ++k) {
-      S += R[k];
+      for (k = 0; k < m; ++k) {
+        qaa[k][k] = R[k] * R[k] / (S * S) - R[k] / S;
+      }
+    
+      // Add relevant values to diagonal vector
+      for (k = 0; k < m; ++k) {
+        if(g==0){ // g represents with the constants, and we should simply multiply qaa[k][k] by 1
+          HDiagG[k] += qaa[k][k]*1;
+        } else{ // g represents a basis function term, so we should use the square of x_mat_H[i][j][g-1]
+          // g-1 corrects for the fact that the constant is not represented in this matrix, so the 0th group would be the first basis function term
+          HDiagG[k] += qaa[k][k]*x_mat_H[i][j][g-1]*x_mat_H[i][j][g-1];
+        }
+      }
     }
-    
-    for (k = 0; k < m; ++k) {
-      qaa[k][k] = R[k] * R[k] / (S * S) - R[k] / S;
-    }
-    
-    // Add relevant values to diagonal vector
-    for (k = 0; k < m; ++k) {
-      HDiagG[k] += qaa[k][k]*H[g]*H[g];
-      
-    }
-    
   }
   
   // Initialize output as the negative of the group's first diagonal entry
@@ -799,7 +885,6 @@ double hG(unsigned long n_total, /*inputs*/
   
   /* free arrays */
   free((void *) R);
-  free((void *) H);
   free((void *) HDiagG);
   
   free((void *) qaa[0]);
@@ -813,8 +898,7 @@ void grad_Gt(unsigned long n_total, /*inputs*/
   unsigned long * restrict n_samples, /*inputs*/
   unsigned long m, unsigned long d, /*inputs*/
   double *restrict* restrict par_mat, /*inputs*/
-  void (*h_func)(double, double * restrict), /*input*/
-  double *restrict* restrict x_mat, /*inputs*/
+  double *restrict* restrict* restrict x_mat_H /*inputs*/,
   unsigned long g, /*inputs*/
   double * restrict grad_G /*output*/)
   /* Calculating the gradient for a particular group of entries
@@ -825,8 +909,8 @@ void grad_Gt(unsigned long n_total, /*inputs*/
    *   m -- number of samples - 1;
    *   d -- dimension of h(x); 
    *   par_mat -- values of parameters (pointer matrix of dimension m by (d+1));
-   *   h_func -- the basis function of the DRM;
-   *   x_mat -- 2-D pointer array of data, organized as x_0, x_1, ..., x_m.
+   *   x_matH -- 3-D pointer array of data, the first two dimensions are organized as x_0, x_1, ..., x_m,
+   *    with the third dimension being the cached value of the basis function at x_ij
    *   g -- the lasso group
    * Outputs:
    *   grad_G -- a pointer array of dimension m; value of the gradient of the ldl (log dual empirical likelihood) at a given "par" value and at the group g indices.
@@ -840,14 +924,6 @@ void grad_Gt(unsigned long n_total, /*inputs*/
   if (R == NULL) errMsg("malloc() allocation failure for R!");
   for (i = 0; i < m; ++i) {
     R[i] = 0.0;
-  }
-  
-  double * restrict H;
-  H = (double * restrict) malloc((size_t) ((d+1)*sizeof(double)));
-  if (H == NULL) errMsg("malloc() allocation failure for H!");
-  H[0] = 1.0;
-  for (i = 1; i < (d+1); ++i) {
-    H[i] = 0.0;
   }
   
   double * restrict rho;
@@ -871,9 +947,9 @@ void grad_Gt(unsigned long n_total, /*inputs*/
     for (j = 0; j < n_samples[i]; ++j) {
       
       /*update H = (1, h^T)^T*/
-      (*h_func)(x_mat[i][j], H+1); /*update H*/
+      //(*h_func)(x_mat[i][j], H+1); /*update H*/
       
-      R_val(m, d, H+1, par_mat, rho, R); /*update R*/
+      R_val(m, d, x_mat_H[i][j], par_mat, rho, R); /*update R*/
       
       /*calculating S*/
       S = rho[0];
@@ -886,12 +962,20 @@ void grad_Gt(unsigned long n_total, /*inputs*/
         
         tmp_double = -R[k]/S;
         
-        grad_G[k] += tmp_double * H[g];
+        if(g==0){ // group is the constant group, so factor is 1
+          grad_G[k] += tmp_double;
+        } else{
+          grad_G[k] += tmp_double * x_mat_H[i][j][g-1]; //use g-1 as index since index starts at first term of basis function
+        }
         
       }
       
       if (i > 0) {
-        grad_G[i-1] = H[g] + grad_G[i-1];
+        if(g==0){
+          grad_G[i-1] = 1 + grad_G[i-1];
+        } else{
+          grad_G[i-1] = x_mat_H[i][j][g-1] + grad_G[i-1];
+        }
       }
       
     }
@@ -900,7 +984,6 @@ void grad_Gt(unsigned long n_total, /*inputs*/
   
   /* free arrays */
   free((void *) R);
-  free((void *) H);
   free((void *) rho);
   
 }
@@ -1043,6 +1126,29 @@ void bcgd(
   break;
   }
   
+  // Setup x_mat_H as matrix for computations, which will cache the results of the basis function for each x_ij
+  double *restrict* restrict* restrict x_mat_H;
+  x_mat_H = (double *restrict* restrict* restrict) malloc((size_t) (((unsigned
+                                                            long)*m+1)*sizeof(double**)));
+  if (x_mat_H == NULL) errMsg("malloc() allocation failure for x_mat_H!");
+  // define idx to track index of x in flat pointer
+  unsigned long idx = 0;
+  
+  for (i = 0; i < ((unsigned long)*m + 1); ++i){
+    //update idx
+    if(i > 0){
+      idx += n_samples_use[i-1];
+    }
+    
+    x_mat_H[i] = (double *restrict* restrict) malloc((size_t) ((n_samples_use[i])*sizeof(double*)));
+    if (x_mat_H[i] == NULL) errMsg("malloc() allocation failure for x_mat_H[i]!");
+    for(j = 0; j < n_samples_use[i]; j++){
+      x_mat_H[i][j] = (double * restrict) malloc((size_t) (((unsigned long)*d)*sizeof(double)));
+      if (x_mat_H[i][j] == NULL) errMsg("malloc() allocation failure for x_mat_H[i][j]!");
+      (*h_func)(x[idx+j], x_mat_H[i][j]); // update x_mat_H[i][j]
+    }
+  }
+  
   // Create inner loop index for groups
   unsigned long g;
   
@@ -1062,8 +1168,8 @@ void bcgd(
   for(i = 1;i<=(unsigned long)*max_iters;i++){
     // set initial value of the function
     if(i == 1){
-      initial_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
-                               (unsigned long)*d, par_mat, h_func, x_mat, *lambda, pen_g);
+      initial_ldlGL = (-1)*logDualLGLCache((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
+                               (unsigned long)*d, par_mat, x_mat_H, *lambda, pen_g);
     } else {
       initial_ldlGL = final_ldlGL; // can do this here because it will be equal to the most recent evaluation
     }
@@ -1079,12 +1185,12 @@ void bcgd(
       }
 
       grad_Gt((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
-              (unsigned long)*d, par_mat, h_func, x_mat, g, /*inputs*/
+              (unsigned long)*d, par_mat, x_mat_H, g, /*inputs*/
               grad_G /*output*/);
 
       // Compute h_g
       h_g = hG((unsigned long)*n_total, n_samples, (unsigned long)*m,
-               (unsigned long)*d, par_mat, h_func, x, g)/*inputs*/;
+               (unsigned long)*d, par_mat, x_mat_H, g)/*inputs*/;
       
       
       // Initialize d_g, the direction vector
@@ -1170,8 +1276,8 @@ void bcgd(
           par_mat[j][g] = original_col_g[j] + omega_t * d_g[j];
         }
         // update final_ldlGL
-        final_ldlGL = (-1)*logDualLGL((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
-                        (unsigned long)*d, par_mat, h_func, x_mat, *lambda, pen_g);
+        final_ldlGL = (-1)*logDualLGLCache((unsigned long)*n_total, n_samples_use, (unsigned long)*m,
+                        (unsigned long)*d, par_mat, x_mat_H, *lambda, pen_g);
         // Compute difference
         double sub = final_ldlGL - init_ldlGl_iter;
         // Check if step size is optimal
@@ -1196,10 +1302,19 @@ void bcgd(
     }
   }
   // Set the minimum value to return
+  // Free allocated memory for x-mat_H
+  for (unsigned long i = 0; i < ((unsigned long)*m + 1); ++i) {
+    for (unsigned long j = 0; j < n_samples_use[i]; ++j) {
+      free(x_mat_H[i][j]);  // Free each double* (the actual data storage)
+    }
+    free((void *) x_mat_H[i]);  // Free each double** (array of double*)
+  }
+  free((void *) x_mat_H);  // Free the top-level double*** pointer
+  
   *opt_val = final_ldlGL;
+  
   // free other variables
   free(n_samples_use);
-  free((void *) x_mat);
   free((void *) par_mat);
 }
 

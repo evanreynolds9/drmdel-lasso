@@ -8,7 +8,7 @@ source("R\\init.R")
 distribution = "normal"
 n = 250
 model = 12
-lambdaVals = c(0, (n^(1/3)*(3))^(-4:4))
+lambdaVals = c(0, ((n*3)^(1/3))*10^(-4:4))
 adaptive = TRUE
 runs = 10
 
