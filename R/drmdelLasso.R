@@ -80,9 +80,9 @@ solutionPath = function(x ,n_total, n_samples, m, d, model, lambdaVals, adaptive
   # If adaptive is true, we set the inverse of the groupwise mele to be pen_G
   if(adaptive){
     theta_mat = matrix(mele, nrow = m, ncol = d+1, byrow = TRUE)
-    pen_g = 1/(sqrt(colSums(theta_mat^2)))
+    pen_g = 1/(sqrt(colSums(theta_mat^2))[-1]) # Delete column for constants
   } else{
-    pen_g = rep(1,d+1)
+    pen_g = rep(1,d)
   }
   # Set value for initial guess of theta to be the mele
   init_theta = mele

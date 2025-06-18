@@ -1199,13 +1199,23 @@ void bcgd(
         errMsg("malloc() allocation failure for d_g!");
       }
       
+      // Set value for delta_t, which is computed conditionally on the g != 0
+      double delta_t = 0.0;
+      // initialize the initial value of the objective function
+      double init_ldlGl_iter;
+      
       // Begin cases for d_g computation
       
       if(g==0){ // 0 is the group of intercepts
         // Loop through d_g and set values
         for(j = 0; j<(unsigned long)*m; j++){
           d_g[j] = (1.0/h_g) * grad_G[j];
+          // Compute delta that will be used in line search
+          delta_t += (-1.0)*d_g[j]*grad_G[j];
         }
+        
+        // set initial value for objective
+        init_ldlGl_iter = initial_ldlGL;
       } else{
         // First we want to compute the norm of grad_g + h_g*theta_g
         double norm = 0.0;
@@ -1215,50 +1225,42 @@ void bcgd(
           norm += vecEntry * vecEntry;
         }
         norm = sqrt(norm);
-        if(norm <= *lambda * pen_g[g]){ // we set d equal to the negative of theta
+        if(norm <= *lambda * pen_g[g-1]){ // we set d equal to the negative of theta. g offset since it is only of length d, and g goes from 0 to d 
           for(j = 0; j<(unsigned long)*m; j++){
             d_g[j] = (-1.0)*par_mat[j][g];
           }
         } else{
           for(j = 0; j<(unsigned long)*m; j++){
-            d_g[j] = (1.0/h_g) * (grad_G[j] - *lambda * pen_g[g] * (grad_G[j] + h_g * par_mat[j][g]) / norm);
+            d_g[j] = (1.0/h_g) * (grad_G[j] - *lambda * pen_g[g-1] * (grad_G[j] + h_g * par_mat[j][g]) / norm);
           }
         }
-      }
-      
-      // Now that we have set d_g, we want to perform the line search
-      // First we need to compute delta
-      double delta_t = 0.0;
-      // we need two temp sums to track the norms of theta_g and theta_g + d_g
-      double delta_norm_1 = 0.0;
-      double delta_norm_2 = 0.0;
-      for(j = 0; j<(unsigned long)*m; j++){
-        // first add -d_g*theta_g to delta
-        delta_t += (-1.0)*d_g[j]*grad_G[j];
-        // update the two norms
-        // compute sum of entries first
-        double delta_norm_1_entry = par_mat[j][g] + d_g[j];
-        delta_norm_1 += delta_norm_1_entry * delta_norm_1_entry;
-        delta_norm_2 += par_mat[j][g] * par_mat[j][g];
-      }
-      // Take root of norms
-      delta_norm_1 = sqrt(delta_norm_1);
-      delta_norm_2 = sqrt(delta_norm_2);
-      
-      // Add to delta_t
-      delta_t = delta_t + *lambda * pen_g[g] * (delta_norm_1 - delta_norm_2);
-      
-      // initialize omega_t
-      double omega_t = *omega_0;
-      
-      // compute the initial value of the objective function
-      double init_ldlGl_iter;
-      if(g == 0){
-        init_ldlGl_iter = initial_ldlGL;
-      } else {
+        
+        // Compute delta for coefficient group
+        double delta_norm_1 = 0.0;
+        double delta_norm_2 = 0.0;
+        
+        for(j = 0; j<(unsigned long)*m; j++){
+          // first add -d_g*theta_g to delta
+          delta_t += (-1.0)*d_g[j]*grad_G[j];
+          // update the two norms
+          // compute sum of entries first
+          double delta_norm_1_entry = par_mat[j][g] + d_g[j];
+          delta_norm_1 += delta_norm_1_entry * delta_norm_1_entry;
+          delta_norm_2 += par_mat[j][g] * par_mat[j][g];
+        }
+        
+        // Take root of norms
+        delta_norm_1 = sqrt(delta_norm_1);
+        delta_norm_2 = sqrt(delta_norm_2);
+        delta_t = delta_t + *lambda * pen_g[g-1] * (delta_norm_1 - delta_norm_2);
+        
+        // set initial value for objective
         init_ldlGl_iter = final_ldlGL; // can do this here because it will be equal to the most recent evaluation
       }
       
+      // initialize omega_t
+      double omega_t = *omega_0;
+     
       // before starting line search, copy original values of gth column for efficient updates
       double *restrict original_col_g = (double *restrict) malloc((size_t) (((unsigned long)*m)*sizeof(double)));
       if (original_col_g == NULL) {
