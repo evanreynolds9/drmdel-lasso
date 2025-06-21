@@ -6,6 +6,9 @@
 readRenviron(".Renviron")
 shared_lib = Sys.getenv("SHARED_LIB")
 
+# Load dplyr library
+library(dplyr)
+
 # Build the shared library
 setwd("src")
 lib_str = paste0(shared_lib, ".dll")
@@ -109,3 +112,143 @@ runSimulation = function(distribution, n, d, model, lambdaVals, adaptive = FALSE
   # Return simulationResults
   return(simulationResults)
 }
+
+# Define a simple wrapper function that, for data from a simulation, computes:
+#   1. The proportion of runs in the simulation that yielded at least one selection consistent solution
+#   2. The proportion of runs in the simulation where AIC yielded a selection consistent solution
+#   3. The proportion of runs in the simulation where AIC yielded a solution that contains a selection consistent solution
+#   4. The proportion of runs in the simulation where BIC yielded a selection consistent solution
+#   5. The proportion of runs in the simulation where BIC yielded a solution that contains a selection consistent solution
+summariseSim = function(distribution, file_name, basis_func, tol){
+  # distribution: (str) string specifying the distribution, must be "normal" or "gamma"
+  # file_name: (str) the name of the file where the data is stored
+  # basis_func: (int) the basis function used. Currently, only 12 is supported
+  # tol: (double) tolerance used to check consistent solutions, values less than this tolerance will be considered 0
+  
+  # Check this is being run in the data folder
+  if(sub("^.*/", "", getwd()) != "Data"){
+    print("sumariseSim must be run from the Data folder!")
+    return(-1)
+  }
+  
+  # Ensure distribution string is valid
+  if(!(distribution %in% c("normal", "gamma"))){
+    print('Invalid distribution string passed. Currently only "normal" and "gamma" are supported.')
+    return(-1)
+  }
+  
+  # Ensure the basis function is valid
+  if(basis_func != 12){
+    print('Invalid basis function passed. Currently 12 is supported.')
+    return(-1)
+  }
+  
+  # Import data, throwing an error if import fails
+  simData = try(read.csv(file_name, header = TRUE), silent = TRUE)
+  if(inherits(simData, "try-error")){
+    print("File not found. Double check the specified file name.")
+    return(-1)
+  }
+  
+  # Get the number of runs
+  numRuns = max(simData$Run)
+  
+  # Conditionally create string to select columns for basis function terms, depending on distribution
+  # This may need to be changed conditionally if other distributions or other basis functions are used
+  if(distribution == "gamma"){
+    condStr = "1.$|4.$"
+  } else{ # distribution is normal
+    condStr = "4.$|5.$"
+  }
+  
+  # Compute proportion of paths with at least one consitent solution
+  consistSols <- simData %>%
+    filter(
+      if_all(
+        select(., matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) > tol
+      ),
+      if_all(
+        select(., !matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) <= tol
+      )
+    )
+  
+  consistSolsProp = nrow(distinct(consistSols, Run))/numRuns
+  
+  # Compute proportions for AIC
+  # Get rows where AIC is the minimum
+  minAIC = simData %>%
+    group_by(Run) %>%
+    slice(which.min(AIC)) %>%
+    ungroup()
+  
+  # Compute proportion that are consistent
+  minAICSols = minAIC %>%
+    filter(
+      if_all(
+        select(., matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) > tol
+      ),
+      if_all(
+        select(., !matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) <= tol
+      )
+    )
+  
+  consistMinAIC = nrow(minAICSols)/numRuns
+  
+  # Compute porportion that contain true basis function
+  minAICSubs = minAIC %>%
+    filter(
+      if_all(
+        select(., matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) > tol
+      )
+    )
+  
+  subMinAIC = nrow(minAICSubs)/numRuns
+  
+  # Compute proportions for BIC
+  # Get rows where BIC is the minimum
+  minBIC = simData %>%
+    group_by(Run) %>%
+    slice(which.min(BIC)) %>%
+    ungroup()
+  
+  # Compute proportion that are consistent
+  minBICSols = minBIC %>%
+    filter(
+      if_all(
+        select(., matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) > tol
+      ),
+      if_all(
+        select(., !matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) <= tol
+      )
+    )
+  
+  consistMinBIC = nrow(minBICSols)/numRuns
+  
+  # Compute porportion that contain true basis function
+  minBICSubs = minBIC %>%
+    filter(
+      if_all(
+        select(., matches(condStr) & starts_with("beta")) %>% names(),
+        ~ abs(.) > tol
+      )
+    )
+  
+  subMinBIC = nrow(minBICSubs)/numRuns
+  
+  # return vector showing proportions
+  return(c(runs = consistSolsProp, 
+           AIC = consistMinAIC,
+           AIC_sub = subMinAIC,
+           BIC = consistMinBIC,
+           BIC_sub = subMinBIC))
+}
+
+
+

@@ -41,5 +41,9 @@ if(adaptive){
 } else{
   adapStr = "reg"
 }
-fileName = paste0(paste("sim_results", adapStr, n, sep = "_"), ".csv")
+fileName = paste0(paste("sim_results", distribution, adapStr, n, sep = "_"), ".csv")
 write.csv(simDataDf, fileName, row.names = FALSE)
+
+# Get proportions from simulations
+simSum = summariseSim(distribution, fileName, basis_func = model, tol = 1e-12)
+print(simSum)
