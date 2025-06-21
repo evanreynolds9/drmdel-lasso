@@ -22,6 +22,12 @@ bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda, pen_g = rep
   # double *opt_val, /*output: the minimized value of the negLDLGL function */
   # double *total_iters /*output: number of iterations to convergence*/
   
+  # End function if pen_g has length not equal to d
+  if(length(pen_g) != d){
+    print("Length of penalty does not equal length of basis function!")
+    return(-1)
+  }
+  
   
   bcgdOutput = .C("bcgd", as.double(n_total), as.double(n_samples), as.double(m),
                   as.double(d), as.double(model), as.double(x), as.double(lambda), as.double(pen_g),
@@ -34,13 +40,15 @@ bcgd = function(theta_0, x ,n_total, n_samples, m, d, model, lambda, pen_g = rep
 
 # Create aic/bic function
 aic_bic_drm = function(theta, x, n_total ,n_samples, m, basis_func, d){
+  
   # Compute the AIC and BIC of a given DRM parameter estimate
-  negLDLVal = negLDL(theta, x, n_total, n_samples, m, model, d)
-  theta_mat = matrix(theta, nrow = m, ncol = d+1, byrow = TRUE)
+  negLDLVal = negLDL(theta, x, n_total, n_samples, m, basis_func, d)
+  theta_mat = matrix(theta, nrow = m, ncol = d+1, byrow = TRUE)[,-1] # Remove first column for constants
   group_sums = colSums(theta_mat^2)
+  
   # Count the number of non-zero groups for the penalty
-  pen = sum(group_sums>0)*m
-  return(c(negLDLVal+2*pen,negLDLVal+log(n_total)*pen))
+  pen = sum(group_sums>1e-12)*m # Set tolerance in case values are extremely close to 0
+  return(c(2*negLDLVal+2*pen,2*negLDLVal+log(n_total)*pen))
 }
 
 solutionPath = function(x ,n_total, n_samples, m, d, model, lambdaVals, adaptive = FALSE){
